@@ -1,0 +1,59 @@
+{{ define "admin/tools.html" }}
+{{ template "admin/header.html" . }}
+
+<style>
+    .tools-page { max-width: 1200px; }
+    .tools-page textarea { height: 200px; font-family: monospace; }
+    .result-meta { margin: 15px 0; color: #555; }
+    .result-table { width: 100%; border-collapse: collapse; overflow-x: auto; display: block; }
+    .result-table th, .result-table td { padding: 8px 10px; border: 1px solid #ddd; text-align: left; white-space: nowrap; }
+    .result-table th { background: #f5f5f5; position: sticky; top: 0; }
+    .result-table tbody tr:nth-child(even) { background: #fafafa; }
+</style>
+
+<div class="tools-page">
+    <h2>SQL Tools</h2>
+
+    {{ if .Error }}<div class="error">{{ .Error }}</div>{{ end }}
+
+    <form method="POST" action="/tools">
+        <div class="form-group">
+            <label for="query">SQL Query</label>
+            <textarea id="query" name="query" placeholder="SELECT * FROM posts LIMIT 10;">{{ .Query }}</textarea>
+        </div>
+        <button type="submit" class="btn">Execute</button>
+    </form>
+
+    {{ if .Columns }}
+    <div class="result-meta">{{ .RowCount }} row(s) returned</div>
+    <table class="result-table">
+        <thead>
+            <tr>
+                {{ range .Columns }}
+                <th>{{ . }}</th>
+                {{ end }}
+            </tr>
+        </thead>
+        <tbody>
+            {{ range .Rows }}
+            <tr>
+                {{ range . }}
+                <td>{{ . }}</td>
+                {{ end }}
+            </tr>
+            {{ else }}
+            <tr>
+                <td colspan="{{ len .Columns }}" style="text-align: center;">No rows returned.</td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+    {{ end }}
+
+    {{ if .IsMutation }}
+    <div class="result-meta">{{ .RowsAffected }} row(s) affected</div>
+    {{ end }}
+</div>
+
+{{ template "admin/footer.html" . }}
+{{ end }}

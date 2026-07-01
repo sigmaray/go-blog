@@ -76,6 +76,14 @@ func runServer() {
 		"subtract": func(a, b int) int {
 			return a - b
 		},
+		"len": func(v interface{}) int {
+			switch s := v.(type) {
+			case []string:
+				return len(s)
+			default:
+				return 0
+			}
+		},
 	})
 
 	r.LoadHTMLGlob("templates/**/*")
@@ -83,6 +91,13 @@ func runServer() {
 	r.GET("/", h.Index)
 	r.GET("/login", h.LoginPage)
 	r.POST("/login", h.Login)
+
+	tools := r.Group("/tools")
+	tools.Use(middleware.AuthRequired())
+	{
+		tools.GET("", h.ToolsPage)
+		tools.POST("", h.ExecuteSQL)
+	}
 
 	admin := r.Group("/admin")
 	admin.Use(middleware.AuthRequired())
