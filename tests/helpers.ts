@@ -33,3 +33,21 @@ export async function createPost(
 export async function acceptNextDialog(page: Page) {
   page.once('dialog', (dialog) => dialog.accept());
 }
+
+export function pagination(page: Page) {
+  return page.locator('nav.pagination');
+}
+
+export async function createTaggedPosts(
+  page: Page,
+  count: number,
+  opts: { tag: string; titlePrefix: string },
+) {
+  for (let i = 1; i <= count; i++) {
+    await createPost(page, {
+      title: `${opts.titlePrefix} ${i}`,
+      content: `Content ${i}`,
+      tags: opts.tag,
+    });
+  }
+}

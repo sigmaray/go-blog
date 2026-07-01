@@ -75,37 +75,6 @@ test.describe.serial('posts', () => {
     await expect(page.locator('.post')).toContainText(goTitle);
   });
 
-  test('paginates posts across pages', async ({ page }) => {
-    await login(page);
-    const paginationTag = uniqueId('e2e-pagination');
-
-    for (let i = 1; i <= 6; i++) {
-      await createPost(page, {
-        title: `${paginationTag} Pagination Post ${i}`,
-        content: `Pagination content ${i}`,
-        tags: paginationTag,
-      });
-    }
-
-    await page.goto(`/?tag=${paginationTag}`, { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.post')).toHaveCount(5);
-    await expect(page.getByRole('link', { name: 'Next' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Previous' })).not.toBeVisible();
-
-    await page.getByRole('link', { name: 'Next' }).click();
-    await expect(page).toHaveURL(
-      new RegExp(
-        `[?&]page=2(?:&|$).*tag=${paginationTag}|[?&]tag=${paginationTag}(?:&|$).*page=2`,
-      ),
-    );
-    await expect(page.locator('.post')).toHaveCount(1);
-    await expect(page.getByRole('link', { name: 'Previous' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Next' })).not.toBeVisible();
-
-    await page.getByRole('link', { name: 'Previous' }).click();
-    await expect(page.locator('.post')).toHaveCount(5);
-  });
-
   test('edits a post', async ({ page }) => {
     await login(page);
     const title = uniqueId('edit-post');
