@@ -92,13 +92,6 @@ func runServer() {
 	r.GET("/login", h.LoginPage)
 	r.POST("/login", h.Login)
 
-	tools := r.Group("/tools")
-	tools.Use(middleware.AuthRequired())
-	{
-		tools.GET("", h.ToolsPage)
-		tools.POST("", h.ExecuteSQL)
-	}
-
 	admin := r.Group("/admin")
 	admin.Use(middleware.AuthRequired())
 	{
@@ -114,6 +107,8 @@ func runServer() {
 		admin.GET("/users/:id/edit", h.EditUserPage)
 		admin.POST("/users/:id", h.UpdateUser)
 		admin.POST("/users/:id/delete", h.DeleteUser)
+		admin.GET("/tools", h.ToolsPage)
+		admin.POST("/tools", h.ExecuteSQL)
 		admin.POST("/logout", h.Logout)
 	}
 

@@ -16,7 +16,7 @@
 
     {{ if .Error }}<div class="error">{{ .Error }}</div>{{ end }}
 
-    <form method="POST" action="/tools">
+    <form method="POST" action="/admin/tools">
         <div class="form-group">
             <label for="query">SQL Query</label>
             <textarea id="query" name="query" placeholder="SELECT * FROM posts LIMIT 10;">{{ .Query }}</textarea>
