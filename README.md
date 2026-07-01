@@ -64,12 +64,12 @@ go run . posts-seed 10
 The production `docker-compose.yml` expects:
 
 1. A running PostgreSQL instance (default host: `shared-postgres`)
-2. An external Docker network named `projects-net`
+2. An external Docker network named `infra`
 
 Create the network once if it does not exist:
 
 ```bash
-docker network create projects-net
+docker network create infra
 ```
 
 Ensure PostgreSQL is reachable from that network and matches the values in `.env`.
