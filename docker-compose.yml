@@ -1,0 +1,21 @@
+services:
+  go-blog:
+    build: .
+    container_name: go-blog
+    env_file: .env
+    ports:
+      - "${GO_BLOG_HTTP_PORT:-8083}:8083"
+    restart: unless-stopped
+    networks:
+      - projects-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8083/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+networks:
+  projects-net:
+    external: true
+    name: projects-net
