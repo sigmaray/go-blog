@@ -4,12 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
 	"strings"
-	"time"
 
 	"go-blog/models"
+	"go-blog/postops"
 
 	"gorm.io/gorm"
 )
@@ -172,86 +171,19 @@ func postsShow(db *gorm.DB) {
 }
 
 func postsSeed(db *gorm.DB, count int) {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	titles := []string{
-		"Getting Started with Go",
-		"Building REST APIs",
-		"Database Migrations 101",
-		"Understanding Goroutines",
-		"Web Development Tips",
-		"Docker for Developers",
-		"Testing Best Practices",
-		"Clean Code in Go",
-		"Deploying to Production",
-		"Introduction to Gin",
-		"PostgreSQL Performance",
-		"Session-Based Auth",
+	created, err := postops.Seed(db, count)
+	if err != nil {
+		log.Fatalf("Failed to seed posts: %v", err)
 	}
-
-	contents := []string{
-		"This post covers the fundamentals and practical examples.",
-		"A deep dive into patterns and common pitfalls.",
-		"Step-by-step guide with code snippets.",
-		"Everything you need to know to get productive quickly.",
-		"Lessons learned from real-world projects.",
-	}
-
-	tagPool := []string{"go", "web", "tutorial", "news", "devops", "database", "api", "docker", "testing", "gin"}
-
-	for i := 0; i < count; i++ {
-		title := titles[rng.Intn(len(titles))] + fmt.Sprintf(" #%d", i+1)
-		content := contents[rng.Intn(len(contents))]
-
-		post := models.Post{
-			Title:   title,
-			Content: content,
-		}
-
-		tagCount := rng.Intn(3) + 1
-		usedTags := make(map[string]bool)
-		for j := 0; j < tagCount; j++ {
-			tagName := tagPool[rng.Intn(len(tagPool))]
-			if usedTags[tagName] {
-				continue
-			}
-			usedTags[tagName] = true
-
-			var tag models.Tag
-			if err := db.Where("name = ?", tagName).FirstOrCreate(&tag, models.Tag{Name: tagName}).Error; err != nil {
-				log.Fatalf("Failed to create tag: %v", err)
-			}
-			post.Tags = append(post.Tags, tag)
-		}
-
-		if err := db.Create(&post).Error; err != nil {
-			log.Fatalf("Failed to create post: %v", err)
-		}
-
-		tagNames := make([]string, len(post.Tags))
-		for k, tag := range post.Tags {
-			tagNames[k] = tag.Name
-		}
-		fmt.Printf("Created post id=%d title=%q tags=[%s]\n", post.ID, post.Title, strings.Join(tagNames, ", "))
-	}
+	fmt.Printf("Created %d post(s).\n", created)
 }
 
 func postsClear(db *gorm.DB) {
-	if err := db.Exec("DELETE FROM post_tags").Error; err != nil {
-		log.Fatalf("Failed to clear post_tags: %v", err)
+	postsDeleted, tagsDeleted, err := postops.Clear(db)
+	if err != nil {
+		log.Fatalf("Failed to clear posts: %v", err)
 	}
-
-	postResult := db.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&models.Post{})
-	if postResult.Error != nil {
-		log.Fatalf("Failed to clear posts: %v", postResult.Error)
-	}
-
-	tagResult := db.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&models.Tag{})
-	if tagResult.Error != nil {
-		log.Fatalf("Failed to clear tags: %v", tagResult.Error)
-	}
-
-	fmt.Printf("Deleted %d post(s) and %d tag(s).\n", postResult.RowsAffected, tagResult.RowsAffected)
+	fmt.Printf("Deleted %d post(s) and %d tag(s).\n", postsDeleted, tagsDeleted)
 }
 
 func readLine(reader *bufio.Reader, prompt string) string {

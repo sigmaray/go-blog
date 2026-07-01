@@ -61,6 +61,24 @@ func (h *Handler) Index(c *gin.Context) {
 	})
 }
 
+func (h *Handler) ShowPost(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	var post models.Post
+	if err := h.DB.Preload("Tags").First(&post, id).Error; err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	c.HTML(http.StatusOK, "public/post.html", gin.H{
+		"Post": post,
+	})
+}
+
 // --- Auth Routes ---
 
 func (h *Handler) LoginPage(c *gin.Context) {

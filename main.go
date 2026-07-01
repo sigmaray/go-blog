@@ -89,6 +89,7 @@ func runServer() {
 	r.LoadHTMLGlob("templates/**/*")
 
 	r.GET("/", h.Index)
+	r.GET("/posts/:id", h.ShowPost)
 	r.GET("/login", h.LoginPage)
 	r.POST("/login", h.Login)
 
@@ -109,6 +110,8 @@ func runServer() {
 		admin.POST("/users/:id/delete", h.DeleteUser)
 		admin.GET("/tools", h.ToolsPage)
 		admin.POST("/tools", h.ExecuteSQL)
+		admin.POST("/tools/posts-seed", h.PostsSeed)
+		admin.POST("/tools/posts-clear", h.PostsClear)
 		admin.POST("/logout", h.Logout)
 	}
 

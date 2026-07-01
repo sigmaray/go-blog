@@ -9,12 +9,35 @@
     .result-table th, .result-table td { padding: 8px 10px; border: 1px solid #ddd; text-align: left; white-space: nowrap; }
     .result-table th { background: #f5f5f5; position: sticky; top: 0; }
     .result-table tbody tr:nth-child(even) { background: #fafafa; }
+    .tools-section { margin-bottom: 40px; }
+    .tools-actions { display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; }
+    .tools-actions .form-group { margin-bottom: 0; }
+    .tools-actions input[type="number"] { width: 80px; }
+    .message { color: #155724; background: #d4edda; border: 1px solid #c3e6cb; padding: 10px 15px; border-radius: 4px; margin-bottom: 15px; }
 </style>
 
 <div class="tools-page">
-    <h2>SQL Tools</h2>
-
     {{ if .Error }}<div class="error">{{ .Error }}</div>{{ end }}
+    {{ if .Message }}<div class="message">{{ .Message }}</div>{{ end }}
+
+    <div class="tools-section">
+        <h2>Post Tools</h2>
+        <div class="tools-actions">
+            <form method="POST" action="/admin/tools/posts-seed">
+                <div class="form-group">
+                    <label for="count">posts-seed count</label>
+                    <input type="number" id="count" name="count" value="10" min="1">
+                </div>
+                <button type="submit" class="btn">Seed Posts</button>
+            </form>
+            <form method="POST" action="/admin/tools/posts-clear" onsubmit="return confirm('Delete all posts and tags?');">
+                <button type="submit" class="btn btn-danger">Clear Posts</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="tools-section">
+    <h2>SQL Tools</h2>
 
     <form method="POST" action="/admin/tools">
         <div class="form-group">
@@ -53,6 +76,7 @@
     {{ if .IsMutation }}
     <div class="result-meta">{{ .RowsAffected }} row(s) affected</div>
     {{ end }}
+    </div>
 </div>
 
 {{ template "admin/footer.html" . }}

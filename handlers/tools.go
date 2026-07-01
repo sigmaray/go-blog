@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"go-blog/postops"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -70,6 +72,51 @@ func (h *Handler) ExecuteSQL(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "admin/tools.html", data)
+}
+
+type PostsSeedInput struct {
+	Count int `form:"count"`
+}
+
+func (h *Handler) PostsSeed(c *gin.Context) {
+	var input PostsSeedInput
+	if err := c.ShouldBind(&input); err != nil {
+		c.HTML(http.StatusBadRequest, "admin/tools.html", gin.H{
+			"Error": "Invalid form data",
+		})
+		return
+	}
+
+	count := input.Count
+	if count < 1 {
+		count = 10
+	}
+
+	created, err := postops.Seed(h.DB, count)
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "admin/tools.html", gin.H{
+			"Error": err.Error(),
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "admin/tools.html", gin.H{
+		"Message": fmt.Sprintf("Created %d post(s).", created),
+	})
+}
+
+func (h *Handler) PostsClear(c *gin.Context) {
+	postsDeleted, tagsDeleted, err := postops.Clear(h.DB)
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "admin/tools.html", gin.H{
+			"Error": err.Error(),
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "admin/tools.html", gin.H{
+		"Message": fmt.Sprintf("Deleted %d post(s) and %d tag(s).", postsDeleted, tagsDeleted),
+	})
 }
 
 func isReadQuery(sql string) bool {

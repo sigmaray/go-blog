@@ -8,9 +8,9 @@
 
 {{ range .Posts }}
 <div class="post">
-    {{ if .Title }}
-        <h3 class="post-title">{{ .Title }}</h3>
-    {{ end }}
+    <h3 class="post-title">
+        <a href="/posts/{{ .ID }}">{{ if .Title }}{{ .Title }}{{ else }}Untitled{{ end }}</a>
+    </h3>
     <div class="post-date">{{ .CreatedAt.Format "Jan 02, 2006 15:04" }}</div>
     <div class="post-content">
         <p>{{ .Content }}</p>
