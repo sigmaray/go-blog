@@ -3,38 +3,42 @@
 
 {{ if .Tag }}
     <h3>Showing posts for tag: {{ .Tag }}</h3>
-    <a href="/">Clear filter</a>
+    <a href="/" class="btn btn-link p-0 mb-3">Clear filter</a>
 {{ end }}
 
 {{ range .Posts }}
-<div class="post">
-    <h3 class="post-title">
-        <a href="/posts/{{ .ID }}">{{ if .Title }}{{ .Title }}{{ else }}Untitled{{ end }}</a>
-    </h3>
-    <div class="post-date">{{ .CreatedAt.Format "Jan 02, 2006 15:04" }}</div>
-    <div class="post-content">
-        <p>{{ .Content }}</p>
-    </div>
-    {{ if .Tags }}
-    <div class="tags">
-        {{ range .Tags }}
-            <a href="/?tag={{ .Name }}" class="tag">{{ .Name }}</a>
+<div class="card mb-3 post">
+    <div class="card-body">
+        <h3 class="card-title h5 post-title">
+            <a href="/posts/{{ .ID }}" class="text-decoration-none">{{ if .Title }}{{ .Title }}{{ else }}Untitled{{ end }}</a>
+        </h3>
+        <p class="text-muted small mb-2 post-date">{{ .CreatedAt.Format "Jan 02, 2006 15:04" }}</p>
+        <div class="card-text post-content">
+            <p>{{ .Content }}</p>
+        </div>
+        {{ if .Tags }}
+        <div class="d-flex flex-wrap gap-1 tags">
+            {{ range .Tags }}
+                <a href="/?tag={{ .Name }}" class="badge text-bg-secondary text-decoration-none tag">{{ .Name }}</a>
+            {{ end }}
+        </div>
         {{ end }}
     </div>
-    {{ end }}
 </div>
 {{ else }}
-    <p>No posts found.</p>
+    <p class="text-muted">No posts found.</p>
 {{ end }}
 
-<div class="pagination">
-    {{ if gt .Page 1 }}
-        <a href="/?page={{ subtract .Page 1 }}{{ if $.Tag }}&tag={{ $.Tag }}{{ end }}">Previous</a>
-    {{ end }}
-    {{ if .HasNext }}
-        <a href="/?page={{ add .Page 1 }}{{ if $.Tag }}&tag={{ $.Tag }}{{ end }}">Next</a>
-    {{ end }}
-</div>
+<nav class="mt-4 pagination">
+    <ul class="pagination">
+        {{ if gt .Page 1 }}
+            <li class="page-item"><a class="page-link" href="/?page={{ subtract .Page 1 }}{{ if $.Tag }}&tag={{ $.Tag }}{{ end }}">Previous</a></li>
+        {{ end }}
+        {{ if .HasNext }}
+            <li class="page-item"><a class="page-link" href="/?page={{ add .Page 1 }}{{ if $.Tag }}&tag={{ $.Tag }}{{ end }}">Next</a></li>
+        {{ end }}
+    </ul>
+</nav>
 
 {{ template "public/footer.html" . }}
 {{ end }}
