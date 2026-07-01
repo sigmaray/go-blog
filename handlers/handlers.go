@@ -53,11 +53,19 @@ func (h *Handler) Index(c *gin.Context) {
 
 	hasNext := int64(page*limit) < total
 
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
+	pages := make([]int, totalPages)
+	for i := range pages {
+		pages[i] = i + 1
+	}
+
 	c.HTML(http.StatusOK, "public/index.html", gin.H{
-		"Posts":   posts,
-		"Page":    page,
-		"HasNext": hasNext,
-		"Tag":     tagFilter,
+		"Posts":      posts,
+		"Page":       page,
+		"Pages":      pages,
+		"TotalPages": totalPages,
+		"HasNext":    hasNext,
+		"Tag":        tagFilter,
 	})
 }
 
