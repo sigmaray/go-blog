@@ -21,6 +21,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      GIN_MODE: release
       GO_BLOG_HTTP_PORT: 8083
       GO_BLOG_SESSION_SECRET: test-go-blog-session-secret-32chars
       GO_BLOG_DATABASE_HOST: postgres

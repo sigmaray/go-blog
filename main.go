@@ -52,7 +52,18 @@ func sessionSecure() bool {
 	return os.Getenv("GO_BLOG_SESSION_SECURE") == "1" || os.Getenv("GO_BLOG_SESSION_SECURE") == "true"
 }
 
+func configureGinMode() {
+	mode := os.Getenv("GIN_MODE")
+	if mode == "" {
+		gin.SetMode(gin.ReleaseMode)
+		return
+	}
+	gin.SetMode(mode)
+}
+
 func runServer() {
+	configureGinMode()
+
 	gormDB := database.ConnectAndMigrate(embedMigrations)
 
 	r := gin.Default()
@@ -87,6 +98,8 @@ func runServer() {
 	})
 
 	r.LoadHTMLGlob("templates/**/*")
+
+	r.StaticFile("/robots.txt", "robots.txt")
 
 	r.GET("/", h.Index)
 	r.GET("/posts/:id", h.ShowPost)
