@@ -12,6 +12,21 @@ test.describe.serial('users', () => {
     await expect(page.getByRole('link', { name: 'Create New User' })).toBeVisible();
   });
 
+  test('rejects password mismatch on create', async ({ page }) => {
+    await login(page);
+    const username = uniqueId('e2e-mismatch-user');
+
+    await page.goto('/admin/users/new', { waitUntil: 'domcontentloaded' });
+    await page.locator('#username').fill(username);
+    await page.locator('#password').fill('password-one');
+    await page.locator('#password_confirm').fill('password-two');
+    await page.getByRole('button', { name: /create user/i }).click();
+
+    await expect(page.locator('.error')).toContainText('Passwords do not match');
+    await expect(page.getByRole('heading', { name: 'Create New User' })).toBeVisible();
+    await expect(page.locator('body')).not.toContainText(username);
+  });
+
   test('creates a user', async ({ page }) => {
     await login(page);
     const username = uniqueId('e2e-user');
