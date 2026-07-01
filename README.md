@@ -29,12 +29,13 @@ cp .env.example .env
 | `GO_BLOG_DATABASE_USER` | Database user |
 | `GO_BLOG_DATABASE_PASSWORD` | Database password (required) |
 
-Migrations run automatically on server start and CLI commands.
+Migrations are applied manually with `./blog migrate`. Concurrent runs are serialized with a PostgreSQL advisory lock.
 
 ## Local development
 
 ```bash
 # Start PostgreSQL and point .env at it, then:
+go run . migrate
 go run . server
 ```
 
@@ -77,6 +78,7 @@ Build and start:
 
 ```bash
 docker compose up -d --build
+docker compose exec go-blog ./blog migrate
 ```
 
 Create the first admin user inside the container:
@@ -97,7 +99,7 @@ The container runs as a non-root `appuser`, listens on port `8083`, and uses `GI
 
 ### Health check
 
-Docker Compose probes `http://127.0.0.1:8083/`. The app also serves `GET /robots.txt` (disallows all crawlers by default).
+Docker Compose probes `GET /health` (returns `{"status":"ok"}` when the database is reachable). The app also serves `GET /robots.txt` (disallows all crawlers by default).
 
 ## Tests
 

@@ -9,7 +9,7 @@ services:
     networks:
       - projects-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8083/"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8083/health"]
       interval: 10s
       timeout: 5s
       retries: 5

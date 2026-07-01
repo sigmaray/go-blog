@@ -58,6 +58,19 @@ export default async function globalSetup() {
     },
   );
 
+  execFileSync(
+    'docker',
+    ['compose', '-f', composeFile, 'exec', '-T', 'app', './blog', 'migrate'],
+    {
+      cwd: projectRoot,
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        GO_BLOG_HTTP_PORT: goBlogPort,
+      },
+    },
+  );
+
   if (!(await waitForServer())) {
     throw new Error(`go-blog test stack failed to become ready at ${baseURL}`);
   }

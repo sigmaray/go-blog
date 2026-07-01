@@ -11,6 +11,12 @@ test.describe('public', () => {
     await expect(page.locator('body')).toContainText(/Go Blog/i);
   });
 
+  test('serves health endpoint', async ({ request }) => {
+    const response = await request.get('/health');
+    expect(response.ok()).toBeTruthy();
+    await expect(response.json()).resolves.toEqual({ status: 'ok' });
+  });
+
   test('redirects unauthenticated users from admin', async ({ page }) => {
     await page.goto('/admin/', { waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(/\/login/);

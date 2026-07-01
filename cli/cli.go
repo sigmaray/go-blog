@@ -53,6 +53,9 @@ func PrintUsage() {
 Server:
   s, server               Start the HTTP server
 
+Database:
+  migrate                 Apply pending database migrations
+
 User commands:
   users-seed              Create admin user (admin/admin)
   users-create            Create a user interactively

@@ -1,13 +1,17 @@
 package database
 
 import (
+	"context"
+	"database/sql"
 	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 
 	"github.com/joho/godotenv"
 	"github.com/pressly/goose/v3"
+	gooseLock "github.com/pressly/goose/v3/lock"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -50,6 +54,32 @@ func Connect() *gorm.DB {
 	return db
 }
 
+func runMigrations(migrations embed.FS, sqlDB *sql.DB) {
+	migrationFS, err := fs.Sub(migrations, "migrations")
+	if err != nil {
+		log.Fatalf("Failed to open migrations directory: %v", err)
+	}
+
+	sessionLocker, err := gooseLock.NewPostgresSessionLocker()
+	if err != nil {
+		log.Fatalf("Failed to create migration session locker: %v", err)
+	}
+
+	provider, err := goose.NewProvider(
+		goose.DialectPostgres,
+		sqlDB,
+		migrationFS,
+		goose.WithSessionLocker(sessionLocker),
+	)
+	if err != nil {
+		log.Fatalf("Failed to create migration provider: %v", err)
+	}
+
+	if _, err := provider.Up(context.Background()); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+}
+
 func RunMigrations(migrations embed.FS) {
 	db := Connect()
 
@@ -59,30 +89,5 @@ func RunMigrations(migrations embed.FS) {
 	}
 	defer sqlDB.Close()
 
-	goose.SetBaseFS(migrations)
-	if err := goose.SetDialect("postgres"); err != nil {
-		log.Fatalf("Failed to set goose dialect: %v", err)
-	}
-	if err := goose.Up(sqlDB, "migrations"); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
-	}
-}
-
-func ConnectAndMigrate(migrations embed.FS) *gorm.DB {
-	db := Connect()
-
-	sqlDB, err := db.DB()
-	if err != nil {
-		log.Fatalf("Failed to get database handle: %v", err)
-	}
-
-	goose.SetBaseFS(migrations)
-	if err := goose.SetDialect("postgres"); err != nil {
-		log.Fatalf("Failed to set goose dialect: %v", err)
-	}
-	if err := goose.Up(sqlDB, "migrations"); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
-	}
-
-	return db
+	runMigrations(migrations, sqlDB)
 }

@@ -31,8 +31,10 @@ func main() {
 	switch os.Args[1] {
 	case "s", "server":
 		runServer()
+	case "migrate":
+		database.RunMigrations(embedMigrations)
 	default:
-		db := database.ConnectAndMigrate(embedMigrations)
+		db := database.Connect()
 		cli.Run(db, os.Args[1:])
 	}
 }
@@ -64,9 +66,12 @@ func configureGinMode() {
 func runServer() {
 	configureGinMode()
 
-	gormDB := database.ConnectAndMigrate(embedMigrations)
-
 	r := gin.Default()
+
+	gormDB := database.Connect()
+	h := handlers.NewHandler(gormDB)
+
+	r.GET("/health", h.Health)
 
 	store := cookie.NewStore(sessionSecret())
 	store.Options(sessions.Options{
@@ -77,8 +82,6 @@ func runServer() {
 		SameSite: http.SameSiteLaxMode,
 	})
 	r.Use(sessions.Sessions("mysession", store))
-
-	h := handlers.NewHandler(gormDB)
 
 	r.SetFuncMap(template.FuncMap{
 		"add": func(a, b int) int {
