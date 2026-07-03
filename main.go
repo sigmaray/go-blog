@@ -72,6 +72,7 @@ func runServer() {
 	h := handlers.NewHandler(gormDB)
 
 	r.GET("/health", h.Health)
+	r.HEAD("/health", h.Health)
 
 	store := cookie.NewStore(sessionSecret())
 	store.Options(sessions.Options{
@@ -105,6 +106,7 @@ func runServer() {
 	r.StaticFile("/robots.txt", "robots.txt")
 
 	r.GET("/", h.Index)
+	r.HEAD("/", h.Health)
 	r.GET("/posts/:id", h.ShowPost)
 	r.GET("/login", h.LoginPage)
 	r.POST("/login", h.Login)

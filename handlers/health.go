@@ -9,14 +9,22 @@ import (
 func (h *Handler) Health(c *gin.Context) {
 	sqlDB, err := h.DB.DB()
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error"})
+		respondHealth(c, http.StatusServiceUnavailable, gin.H{"status": "error"})
 		return
 	}
 
 	if err := sqlDB.PingContext(c.Request.Context()); err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error"})
+		respondHealth(c, http.StatusServiceUnavailable, gin.H{"status": "error"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	respondHealth(c, http.StatusOK, gin.H{"status": "ok"})
+}
+
+func respondHealth(c *gin.Context, status int, body gin.H) {
+	if c.Request.Method == http.MethodHead {
+		c.Status(status)
+		return
+	}
+	c.JSON(status, body)
 }

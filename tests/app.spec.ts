@@ -17,6 +17,13 @@ test.describe('public', () => {
     await expect(response.json()).resolves.toEqual({ status: 'ok' });
   });
 
+  test('responds to HEAD / for uptime checks', async ({ request }) => {
+    const response = await request.head('/');
+    expect(response.ok()).toBeTruthy();
+    expect(response.status()).toBe(200);
+    expect(await response.body()).toEqual(Buffer.from(''));
+  });
+
   test('redirects unauthenticated users from admin', async ({ page }) => {
     await page.goto('/admin/', { waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(/\/login/);
