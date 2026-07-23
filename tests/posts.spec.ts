@@ -17,6 +17,28 @@ test.describe.serial('posts', () => {
     await expect(page.getByRole('heading', { name: 'Create New Post' })).toBeVisible();
   });
 
+  test('preserves inline CSS styles in post HTML', async ({ page }) => {
+    await login(page);
+    const title = uniqueId('styled-post');
+    const marker = uniqueId('styled-body');
+
+    await createPost(page, {
+      title,
+      content: `<p style="color: red; font-size: 18px; text-align: center;">${marker}</p>`,
+    });
+
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const styled = page
+      .locator('.post')
+      .filter({ hasText: title })
+      .locator('.post-content p')
+      .filter({ hasText: marker });
+    await expect(styled).toBeVisible();
+    await expect(styled).toHaveCSS('color', 'rgb(255, 0, 0)');
+    await expect(styled).toHaveCSS('font-size', '18px');
+    await expect(styled).toHaveCSS('text-align', 'center');
+  });
+
   test('creates a post with title, content, and tags', async ({ page }) => {
     await login(page);
     const title = uniqueId('feature-post');
