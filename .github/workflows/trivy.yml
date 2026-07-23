@@ -1,0 +1,59 @@
+name: Security (advisory)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Advisory only: findings are reported, but the job always succeeds.
+      - name: govulncheck (Go dependencies)
+        run: |
+          set +e
+          go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+          status=$?
+          {
+            echo "## govulncheck"
+            if [ "$status" -eq 0 ]; then
+              echo "No known vulnerabilities in Go dependencies."
+            else
+              echo "Vulnerabilities reported (exit ${status}). Advisory only — CI continues."
+              echo "::warning::govulncheck reported vulnerabilities (advisory; CI continues)"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
+      - name: Build image for scanning
+        run: docker build -t "go-blog:ci-${{ github.sha }}" .
+
+      # exit-code 0: Trivy prints findings but does not fail the workflow.
+      - name: Trivy scan image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "go-blog:ci-${{ github.sha }}"
+          format: table
+          exit-code: "0"
+          severity: CRITICAL,HIGH,MEDIUM
+          vuln-type: os,library
+
+      - name: Trivy scan filesystem (dependencies)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: "0"
+          severity: CRITICAL,HIGH,MEDIUM
+          skip-setup-trivy: true

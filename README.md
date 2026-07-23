@@ -117,7 +117,7 @@ To run tests against an already running server:
 SKIP_DOCKER_SETUP=1 GO_BLOG_HTTP_PORT=8083 npm test
 ```
 
-CI runs `gofmt`, `golangci-lint`, `go vet`, `go test`, `go build`, Compose validation, a production Compose smoke test (external `infra` network + Postgres), and the Playwright suite on every push and pull request (see `.github/workflows/ci.yml`).
+CI runs `gofmt`, `golangci-lint`, `go vet`, `go build`, Compose validation, a production Compose smoke test (external `infra` network + Postgres), and the Playwright suite on every push and pull request (see `.github/workflows/ci.yml`). A separate advisory workflow runs `govulncheck` and Trivy on the image and filesystem (see `.github/workflows/security.yml`); findings are printed in the job log / step summary and do not fail CI. Dependabot opens weekly PRs for Go, Docker, npm, and GitHub Actions updates (see `.github/workflows/dependabot.yml`).
 
 ## Project layout
 
