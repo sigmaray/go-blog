@@ -69,3 +69,77 @@ jobs:
         if: failure()
         working-directory: /tmp/postgresql-deploy
         run: docker compose ps && docker compose logs --tail=100 postgres
+
+  test-setup-go-blog:
+    name: Test go-blog bootstrap script
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run PostgreSQL setup script (dependency)
+        env:
+          DEPLOY_DIR: /tmp/postgresql-deploy
+          SETUP_SKIP_APT: "1"
+          SETUP_SKIP_DOCKER_INSTALL: "1"
+          SETUP_SOURCE_DIR: ${{ github.workspace }}/docs/example-postgresql-docker-compose
+          POSTGRES_PASSWORD: ci-test-postgres-password
+          PG_READY_TIMEOUT_SEC: "120"
+        run: |
+          chmod +x docs/example-postgresql-docker-compose/scripts/setup-vps.sh
+          sudo -E bash docs/example-postgresql-docker-compose/scripts/setup-vps.sh
+
+      - name: Run go-blog setup script (CI mode)
+        env:
+          DEPLOY_DIR: /tmp/go-blog-deploy
+          POSTGRES_ENV_FILE: /tmp/postgresql-deploy/.env
+          SETUP_SKIP_APT: "1"
+          SETUP_SKIP_DOCKER_INSTALL: "1"
+          SETUP_SOURCE_DIR: ${{ github.workspace }}
+          APP_READY_TIMEOUT_SEC: "180"
+        run: |
+          chmod +x scripts/setup-vps.sh
+          sudo -E bash scripts/setup-vps.sh
+
+      - name: Verify go-blog is healthy
+        run: |
+          curl -fsS http://127.0.0.1:8083/health | grep -q '"status":"ok"'
+          cd /tmp/go-blog-deploy
+          docker compose ps --status running | grep -q go-blog
+
+      - name: Verify deploy env file
+        run: |
+          test -f /tmp/go-blog-deploy/.env
+          grep -q '^GO_BLOG_DATABASE_PASSWORD=ci-test-postgres-password' /tmp/go-blog-deploy/.env
+          grep -q '^GO_BLOG_DATABASE_HOST=postgresql' /tmp/go-blog-deploy/.env
+          grep -q '^GO_BLOG_HTTP_PORT=8083' /tmp/go-blog-deploy/.env
+          grep -qE '^GO_BLOG_SESSION_SECRET=.+' /tmp/go-blog-deploy/.env
+          secret="$(grep -E '^GO_BLOG_SESSION_SECRET=' /tmp/go-blog-deploy/.env | cut -d= -f2-)"
+          test "${#secret}" -ge 32
+
+      - name: Run go-blog setup script again (idempotency)
+        env:
+          DEPLOY_DIR: /tmp/go-blog-deploy
+          POSTGRES_ENV_FILE: /tmp/postgresql-deploy/.env
+          SETUP_SKIP_APT: "1"
+          SETUP_SKIP_DOCKER_INSTALL: "1"
+          SETUP_SOURCE_DIR: ${{ github.workspace }}
+          APP_READY_TIMEOUT_SEC: "180"
+        run: |
+          sudo -E bash scripts/setup-vps.sh 2>&1 | tee /tmp/go-blog-setup-run2.log
+          grep -q 'skipping redeploy' /tmp/go-blog-setup-run2.log
+
+      - name: Verify session secret persisted across runs
+        run: |
+          secret1="$(grep -E '^GO_BLOG_SESSION_SECRET=' /tmp/go-blog-deploy/.env | cut -d= -f2-)"
+          test -n "${secret1}"
+          test "${#secret1}" -ge 32
+
+      - name: Show container status on failure
+        if: failure()
+        run: |
+          docker compose -f /tmp/postgresql-deploy/docker-compose.yml ps || true
+          docker compose -f /tmp/postgresql-deploy/docker-compose.yml logs --tail=50 postgres || true
+          docker compose -f /tmp/go-blog-deploy/docker-compose.yml ps || true
+          docker compose -f /tmp/go-blog-deploy/docker-compose.yml logs --tail=100 go-blog || true

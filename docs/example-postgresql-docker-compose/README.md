@@ -146,7 +146,7 @@ Manual alternative:
 2. Create `.env` with a production password.
 3. Run `docker compose up -d`.
 
-Then deploy containerized applications on the `infra` network with `GO_BLOG_DATABASE_*` pointing at `postgresql:5432`.
+Then deploy the app with [`scripts/setup-vps.sh`](../../scripts/setup-vps.sh), or manually put containerized applications on the `infra` network with `GO_BLOG_DATABASE_*` pointing at `postgresql:5432`.
 
 ## Backups
 

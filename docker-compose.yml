@@ -3,6 +3,10 @@ services:
     build: .
     container_name: go-blog
     env_file: .env
+    # Host publish port comes from .env GO_BLOG_HTTP_PORT; the process inside
+    # the container always listens on 8083 (see Dockerfile EXPOSE / healthcheck).
+    environment:
+      GO_BLOG_HTTP_PORT: "8083"
     ports:
       - "${GO_BLOG_HTTP_PORT:-8083}:8083"
     restart: unless-stopped

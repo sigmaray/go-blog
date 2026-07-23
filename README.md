@@ -19,7 +19,7 @@ cp .env.example .env
 
 | Variable | Description |
 |----------|-------------|
-| `GO_BLOG_HTTP_PORT` | HTTP listen port (default: `8083`) |
+| `GO_BLOG_HTTP_PORT` | HTTP listen port locally; with Docker Compose, host publish port (container always listens on `8083`) |
 | `GIN_MODE` | Gin mode: `release` (default) or `debug` |
 | `GO_BLOG_SESSION_SECRET` | Session signing key, at least 32 characters |
 | `GO_BLOG_SESSION_SECURE` | Set to `1` or `true` when serving over HTTPS |
@@ -67,6 +67,25 @@ The production `docker-compose.yml` expects:
 2. An external Docker network named `infra`
 
 For a shared PostgreSQL 16 setup on a VPS (one instance, multiple Docker apps), see [docs/example-postgresql-docker-compose/README.md](docs/example-postgresql-docker-compose/README.md).
+
+### VPS bootstrap
+
+Automated bootstrap (Ubuntu, git, Docker, compose stack). Deploy shared PostgreSQL first, then the app:
+
+```bash
+# 1) Shared PostgreSQL (creates network infra and database goblog)
+curl -fsSL https://raw.githubusercontent.com/sigmaray/go-blog/main/docs/example-postgresql-docker-compose/scripts/setup-vps.sh | sudo bash
+
+# 2) go-blog app (default deploy dir: ~/r/d/go-blog)
+curl -fsSL https://raw.githubusercontent.com/sigmaray/go-blog/main/scripts/setup-vps.sh | sudo bash
+# or from a checkout:
+sudo bash scripts/setup-vps.sh
+sudo bash scripts/setup-vps.sh --swap
+```
+
+The app script writes `.env` (reuses `POSTGRES_PASSWORD` from `~/r/d/postgresql/.env` when unset), builds the image, waits for `/health`, and runs migrations. Override paths and secrets with environment variables (see script header).
+
+### Manual deploy
 
 Create the network once if it does not exist (the shared Postgres compose also creates it):
 
@@ -119,7 +138,7 @@ To run tests against an already running server:
 SKIP_DOCKER_SETUP=1 GO_BLOG_HTTP_PORT=8083 npm test
 ```
 
-CI runs `gofmt`, `golangci-lint`, `go vet`, `go build`, Compose validation, a production Compose smoke test (shared Postgres from `docs/example-postgresql-docker-compose` + the app on the `infra` network), and the Playwright suite on every push and pull request (see `.github/workflows/ci.yml`). A separate workflow exercises the PostgreSQL VPS bootstrap script (see `.github/workflows/vps-setup.yml`). A separate advisory workflow runs `govulncheck` and Trivy on the image and filesystem (see `.github/workflows/security.yml`); findings are printed in the job log / step summary and do not fail CI. Dependabot opens weekly PRs for Go, Docker, npm, and GitHub Actions updates (see `.github/workflows/dependabot.yml`).
+CI runs `gofmt`, `golangci-lint`, `go vet`, `go build`, Compose validation, a production Compose smoke test (shared Postgres from `docs/example-postgresql-docker-compose` + the app on the `infra` network), and the Playwright suite on every push and pull request (see `.github/workflows/ci.yml`). A separate workflow exercises the PostgreSQL and go-blog VPS bootstrap scripts (see `.github/workflows/vps-setup.yml`). A separate advisory workflow runs `govulncheck` and Trivy on the image and filesystem (see `.github/workflows/security.yml`); findings are printed in the job log / step summary and do not fail CI. Dependabot opens weekly PRs for Go, Docker, npm, and GitHub Actions updates (see `.github/workflows/dependabot.yml`).
 
 ## Project layout
 
@@ -134,4 +153,5 @@ migrations/          SQL migrations (goose)
 templates/           HTML templates
 tests/               Playwright E2E tests
 docs/                Deployment examples (shared PostgreSQL)
+scripts/             VPS bootstrap for the go-blog Compose stack
 ```
