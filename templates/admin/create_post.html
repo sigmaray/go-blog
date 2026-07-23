@@ -24,6 +24,11 @@
         <input type="text" class="form-control" id="tags" name="tags" value="{{ .Tags }}" placeholder="e.g. go, web, tutorial">
     </div>
 
+    <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="hidden" name="hidden" value="true" {{ if .Hidden }}checked{{ end }}>
+        <label class="form-check-label" for="hidden">Hide post</label>
+    </div>
+
     <button type="submit" class="btn btn-primary">Create Post</button>
     <a href="/admin/" class="btn btn-link">Cancel</a>
 </form>

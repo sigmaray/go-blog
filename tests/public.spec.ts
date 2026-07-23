@@ -45,4 +45,43 @@ test.describe.serial('public post page', () => {
     const response = await page.goto('/posts/999999999', { waitUntil: 'domcontentloaded' });
     expect(response?.status()).toBe(404);
   });
+
+  test('hides post from public index and detail until unhidden', async ({ page }) => {
+    await login(page);
+    const title = uniqueId('hidden-post');
+
+    await createPost(page, {
+      title,
+      content: 'Hidden post body',
+      hidden: true,
+    });
+
+    const row = page.locator('tr').filter({ hasText: title });
+    await expect(row).toBeVisible();
+    await expect(row.getByText('Hidden', { exact: true })).toBeVisible();
+
+    const editHref = await row.getByRole('link', { name: 'Edit' }).getAttribute('href');
+    expect(editHref).toMatch(/\/admin\/posts\/\d+\/edit/);
+    const postId = editHref!.match(/\/admin\/posts\/(\d+)\/edit/)![1];
+
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('.post').filter({ hasText: title })).toHaveCount(0);
+
+    const hiddenResponse = await page.goto(`/posts/${postId}`, { waitUntil: 'domcontentloaded' });
+    expect(hiddenResponse?.status()).toBe(404);
+
+    await page.goto(`/admin/posts/${postId}/edit`, { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#hidden')).toBeChecked();
+    await page.locator('#hidden').uncheck();
+    await page.getByRole('button', { name: /update post/i }).click();
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(page.locator('tr').filter({ hasText: title }).getByText('Hidden', { exact: true })).toHaveCount(0);
+
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('.post').filter({ hasText: title })).toBeVisible();
+
+    const visibleResponse = await page.goto(`/posts/${postId}`, { waitUntil: 'domcontentloaded' });
+    expect(visibleResponse?.status()).toBe(200);
+    await expect(page.locator('.post-title')).toContainText(title);
+  });
 });

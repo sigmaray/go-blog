@@ -21,7 +21,10 @@
         {{ range .Posts }}
         <tr>
             <td>{{ .ID }}</td>
-            <td>{{ if .Title }}{{ .Title }}{{ else }}<em>Untitled</em>{{ end }}</td>
+            <td>
+                {{ if .Title }}{{ .Title }}{{ else }}<em>Untitled</em>{{ end }}
+                {{ if .Hidden }} <span class="badge text-bg-secondary">Hidden</span>{{ end }}
+            </td>
             <td>{{ .CreatedAt.Format "2006-01-02 15:04" }}</td>
             <td>
                 <a href="/admin/posts/{{ .ID }}/edit" class="btn btn-sm btn-outline-primary">Edit</a>

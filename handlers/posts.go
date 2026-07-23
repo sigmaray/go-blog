@@ -25,15 +25,19 @@ func (h *Handler) EditPostPage(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "admin/edit_post.html", gin.H{
-		"Post": post,
-		"Tags": formatTagNames(post.Tags),
+		"Post":   post,
+		"Tags":   formatTagNames(post.Tags),
+		"Hidden": post.Hidden,
 	})
 }
 
+// UpdatePostInput holds validated form fields for updating a post.
+// Hidden is true when the admin checkbox "Hide post" is checked.
 type UpdatePostInput struct {
 	Title   string `form:"title"`
 	Content string `form:"content" validate:"required"`
 	Tags    string `form:"tags"`
+	Hidden  bool   `form:"hidden"`
 }
 
 func (h *Handler) UpdatePost(c *gin.Context) {
@@ -57,6 +61,7 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 			"Title":   input.Title,
 			"Content": input.Content,
 			"Tags":    input.Tags,
+			"Hidden":  input.Hidden,
 		})
 		return
 	}
@@ -68,6 +73,7 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 			"Title":   input.Title,
 			"Content": input.Content,
 			"Tags":    input.Tags,
+			"Hidden":  input.Hidden,
 		})
 		return
 	}
@@ -80,12 +86,14 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 			"Title":   input.Title,
 			"Content": input.Content,
 			"Tags":    input.Tags,
+			"Hidden":  input.Hidden,
 		})
 		return
 	}
 
 	post.Title = input.Title
 	post.Content = content
+	post.Hidden = input.Hidden
 
 	tags, err := h.buildTags(input.Tags)
 	if err != nil {
@@ -95,6 +103,7 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 			"Title":   input.Title,
 			"Content": input.Content,
 			"Tags":    input.Tags,
+			"Hidden":  input.Hidden,
 		})
 		return
 	}
@@ -106,6 +115,7 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 			"Title":   input.Title,
 			"Content": input.Content,
 			"Tags":    input.Tags,
+			"Hidden":  input.Hidden,
 		})
 		return
 	}
@@ -117,6 +127,7 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 			"Title":   input.Title,
 			"Content": input.Content,
 			"Tags":    input.Tags,
+			"Hidden":  input.Hidden,
 		})
 		return
 	}

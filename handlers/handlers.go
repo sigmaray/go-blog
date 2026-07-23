@@ -39,7 +39,7 @@ func (h *Handler) Index(c *gin.Context) {
 	tagFilter := c.Query("tag")
 
 	var posts []models.Post
-	query := h.DB.Preload("Tags").Order("created_at desc")
+	query := h.DB.Preload("Tags").Where("hidden = ?", false).Order("created_at desc")
 
 	if tagFilter != "" {
 		query = query.Joins("JOIN post_tags ON post_tags.post_id = posts.id").
@@ -78,7 +78,7 @@ func (h *Handler) ShowPost(c *gin.Context) {
 	}
 
 	var post models.Post
-	if err := h.DB.Preload("Tags").First(&post, id).Error; err != nil {
+	if err := h.DB.Preload("Tags").Where("hidden = ?", false).First(&post, id).Error; err != nil {
 		c.Status(http.StatusNotFound)
 		return
 	}
@@ -146,10 +146,13 @@ func (h *Handler) NewPostPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "admin/create_post.html", gin.H{})
 }
 
+// CreatePostInput holds validated form fields for creating a post.
+// Hidden is true when the admin checkbox "Hide post" is checked.
 type CreatePostInput struct {
 	Title   string `form:"title"`
 	Content string `form:"content" validate:"required"`
 	Tags    string `form:"tags"`
+	Hidden  bool   `form:"hidden"`
 }
 
 func (h *Handler) CreatePost(c *gin.Context) {
@@ -160,6 +163,7 @@ func (h *Handler) CreatePost(c *gin.Context) {
 			"Title":   input.Title,
 			"Content": input.Content,
 			"Tags":    input.Tags,
+			"Hidden":  input.Hidden,
 		})
 		return
 	}
@@ -170,6 +174,7 @@ func (h *Handler) CreatePost(c *gin.Context) {
 			"Title":   input.Title,
 			"Content": input.Content,
 			"Tags":    input.Tags,
+			"Hidden":  input.Hidden,
 		})
 		return
 	}
@@ -181,6 +186,7 @@ func (h *Handler) CreatePost(c *gin.Context) {
 			"Title":   input.Title,
 			"Content": input.Content,
 			"Tags":    input.Tags,
+			"Hidden":  input.Hidden,
 		})
 		return
 	}
@@ -188,6 +194,7 @@ func (h *Handler) CreatePost(c *gin.Context) {
 	post := models.Post{
 		Title:   input.Title,
 		Content: content,
+		Hidden:  input.Hidden,
 	}
 
 	tags, err := h.buildTags(input.Tags)
@@ -197,6 +204,7 @@ func (h *Handler) CreatePost(c *gin.Context) {
 			"Title":   input.Title,
 			"Content": input.Content,
 			"Tags":    input.Tags,
+			"Hidden":  input.Hidden,
 		})
 		return
 	}
@@ -208,6 +216,7 @@ func (h *Handler) CreatePost(c *gin.Context) {
 			"Title":   input.Title,
 			"Content": input.Content,
 			"Tags":    input.Tags,
+			"Hidden":  input.Hidden,
 		})
 		return
 	}

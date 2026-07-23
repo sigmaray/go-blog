@@ -14,7 +14,7 @@ export async function login(page: Page, username = 'admin', password = 'admin') 
 
 export async function createPost(
   page: Page,
-  opts: { title?: string; content: string; tags?: string },
+  opts: { title?: string; content: string; tags?: string; hidden?: boolean },
 ) {
   await page.goto('/admin/posts/new', { waitUntil: 'domcontentloaded' });
 
@@ -24,6 +24,9 @@ export async function createPost(
   await page.locator('#content').fill(opts.content);
   if (opts.tags) {
     await page.locator('#tags').fill(opts.tags);
+  }
+  if (opts.hidden) {
+    await page.locator('#hidden').check();
   }
 
   await page.getByRole('button', { name: /create post/i }).click();
