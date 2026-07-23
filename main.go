@@ -11,6 +11,7 @@ import (
 	"go-blog/database"
 	"go-blog/handlers"
 	"go-blog/middleware"
+	"go-blog/sanitize"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -98,6 +99,9 @@ func runServer() {
 			default:
 				return 0
 			}
+		},
+		"safeHTML": func(s string) template.HTML {
+			return template.HTML(sanitize.HTML(s))
 		},
 	})
 

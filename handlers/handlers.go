@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"go-blog/models"
+	"go-blog/sanitize"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -173,9 +174,20 @@ func (h *Handler) CreatePost(c *gin.Context) {
 		return
 	}
 
+	content := sanitize.HTML(input.Content)
+	if content == "" {
+		c.HTML(http.StatusBadRequest, "admin/create_post.html", gin.H{
+			"Error":   "Content is required",
+			"Title":   input.Title,
+			"Content": input.Content,
+			"Tags":    input.Tags,
+		})
+		return
+	}
+
 	post := models.Post{
 		Title:   input.Title,
-		Content: input.Content,
+		Content: content,
 	}
 
 	tags, err := h.buildTags(input.Tags)

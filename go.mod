@@ -7,6 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-playground/validator/v10 v10.30.3
 	github.com/joho/godotenv v1.5.1
+	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/pressly/goose/v3 v3.27.1
 	golang.org/x/crypto v0.53.0
 	gorm.io/driver/postgres v1.6.0
@@ -14,6 +15,7 @@ require (
 )
 
 require (
+	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/bytedance/gopkg v0.1.4 // indirect
 	github.com/bytedance/sonic v1.15.2 // indirect
 	github.com/bytedance/sonic/loader v0.5.1 // indirect
@@ -25,6 +27,7 @@ require (
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/gorilla/context v1.1.2 // indirect
+	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/sessions v1.4.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

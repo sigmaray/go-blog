@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"go-blog/models"
+	"go-blog/sanitize"
 
 	"github.com/gin-gonic/gin"
 )
@@ -71,8 +72,20 @@ func (h *Handler) UpdatePost(c *gin.Context) {
 		return
 	}
 
+	content := sanitize.HTML(input.Content)
+	if content == "" {
+		c.HTML(http.StatusBadRequest, "admin/edit_post.html", gin.H{
+			"Error":   "Content is required",
+			"Post":    post,
+			"Title":   input.Title,
+			"Content": input.Content,
+			"Tags":    input.Tags,
+		})
+		return
+	}
+
 	post.Title = input.Title
-	post.Content = input.Content
+	post.Content = content
 
 	tags, err := h.buildTags(input.Tags)
 	if err != nil {

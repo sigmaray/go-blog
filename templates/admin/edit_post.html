@@ -14,8 +14,9 @@
     </div>
 
     <div class="mb-3">
-        <label for="content" class="form-label">Content (Required)</label>
-        <textarea class="form-control" id="content" name="content" rows="6" required>{{ if .Content }}{{ .Content }}{{ else }}{{ .Post.Content }}{{ end }}</textarea>
+        <label for="content" class="form-label">Content (HTML)</label>
+        <textarea class="form-control" id="content" name="content" rows="12" required>{{ if .Content }}{{ .Content }}{{ else }}{{ .Post.Content }}{{ end }}</textarea>
+        <div class="form-text">Safe HTML is allowed (p, a, strong, lists, etc.). Scripts and unsafe markup are removed.</div>
     </div>
 
     <div class="mb-3">
