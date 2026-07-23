@@ -9,7 +9,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o blog .
 
-FROM alpine:3.21.3
+FROM alpine:3.24.1
 
 WORKDIR /app
 
