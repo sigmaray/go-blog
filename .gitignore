@@ -7,3 +7,5 @@ node_modules/
 /blog
 /data/
 /tmp/
+ansible/.venv/
+.molecule/

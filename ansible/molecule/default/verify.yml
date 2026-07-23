@@ -1,0 +1,121 @@
+---
+# Assert PostgreSQL and go-blog are healthy, then re-run playbooks for idempotency.
+
+- name: Verify deployed stacks inside the Incus instance
+  hosts: vps
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Check PostgreSQL container is running
+      ansible.builtin.shell: |
+        set -euo pipefail
+        cd "{{ postgresql_deploy_dir }}"
+        docker compose ps --status running | grep -q postgres
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Check PostgreSQL accepts connections
+      ansible.builtin.command: >
+        docker compose exec -T postgres pg_isready -U postgres -d postgres
+      args:
+        chdir: "{{ postgresql_deploy_dir }}"
+      changed_when: false
+
+    - name: Check goblog database exists
+      ansible.builtin.shell: |
+        set -euo pipefail
+        cd "{{ postgresql_deploy_dir }}"
+        export PGPASSWORD='{{ postgresql_password }}'
+        docker compose exec -T -e PGPASSWORD postgres \
+          psql -U postgres -d postgres -tAc \
+          "SELECT 1 FROM pg_database WHERE datname = 'goblog'" | grep -q 1
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Check go-blog /health endpoint
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8083/health
+        return_content: true
+      register: go_blog_health
+      failed_when: "'\"status\":\"ok\"' not in go_blog_health.content"
+      changed_when: false
+
+    - name: Check go-blog container is running
+      ansible.builtin.shell: |
+        set -euo pipefail
+        cd "{{ go_blog_deploy_dir }}"
+        docker compose ps --status running | grep -q go-blog
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Stat PostgreSQL deploy .env
+      ansible.builtin.stat:
+        path: "{{ postgresql_deploy_dir }}/.env"
+      register: postgresql_env_stat
+
+    - name: Fail when PostgreSQL .env is missing
+      ansible.builtin.fail:
+        msg: "missing {{ postgresql_deploy_dir }}/.env"
+      when: not postgresql_env_stat.stat.exists
+
+    - name: Read PostgreSQL .env
+      ansible.builtin.slurp:
+        path: "{{ postgresql_deploy_dir }}/.env"
+      register: postgresql_env_slurp
+
+    - name: Assert PostgreSQL password in .env
+      ansible.builtin.assert:
+        that:
+          - ("POSTGRES_PASSWORD=" ~ postgresql_password) in (postgresql_env_slurp.content | b64decode)
+
+    - name: Stat go-blog deploy .env
+      ansible.builtin.stat:
+        path: "{{ go_blog_deploy_dir }}/.env"
+      register: go_blog_env_stat
+
+    - name: Fail when go-blog .env is missing
+      ansible.builtin.fail:
+        msg: "missing {{ go_blog_deploy_dir }}/.env"
+      when: not go_blog_env_stat.stat.exists
+
+    - name: Read go-blog .env
+      ansible.builtin.slurp:
+        path: "{{ go_blog_deploy_dir }}/.env"
+      register: go_blog_env_slurp
+
+    - name: Parse go-blog session secret from .env
+      ansible.builtin.set_fact:
+        go_blog_env_text: "{{ go_blog_env_slurp.content | b64decode }}"
+        go_blog_session_secret_line: >-
+          {{
+            (go_blog_env_slurp.content | b64decode).splitlines()
+            | select('match', '^GO_BLOG_SESSION_SECRET=')
+            | list
+            | first
+            | default('')
+          }}
+
+    - name: Assert go-blog .env keys
+      ansible.builtin.assert:
+        that:
+          - ("GO_BLOG_DATABASE_PASSWORD=" ~ postgresql_password) in go_blog_env_text
+          - go_blog_session_secret_line | length > 0
+          - (go_blog_session_secret_line.split('=', 1)[1] | length) >= 32
+
+- name: Re-run playbooks to assert idempotent skip path
+  ansible.builtin.import_playbook: ../../playbooks/setup-all.yml
+
+- name: Confirm second converge completed
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Note that setup-all idempotency was exercised
+      ansible.builtin.debug:
+        msg: >-
+          setup-all.yml ran a second time after a healthy deploy.
+          Role debug messages should include "skipping redeploy" when stacks are current.

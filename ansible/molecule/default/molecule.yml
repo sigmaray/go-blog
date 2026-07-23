@@ -1,0 +1,54 @@
+---
+# Ansible-native Molecule scenario: Incus Ubuntu container as a VPS stand-in.
+# Requires: Incus on the host, user in incus-admin, Docker nesting support.
+#
+#   cd ansible
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements-molecule.txt
+#   .venv/bin/ansible-galaxy collection install community.general
+#   sg incus-admin -c '.venv/bin/molecule test'
+
+ansible:
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_SCENARIO_DIRECTORY}/inventory/
+  env:
+    ANSIBLE_FORCE_COLOR: "1"
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
+    ANSIBLE_COLLECTIONS_PATH: ${HOME}/.ansible/collections:/usr/share/ansible/collections
+  cfg:
+    defaults:
+      host_key_checking: false
+      retry_files_enabled: false
+      interpreter_python: auto_silent
+      roles_path: ${MOLECULE_PROJECT_DIRECTORY}/roles
+    privilege_escalation:
+      become: true
+  playbooks:
+    create: create.yml
+    destroy: destroy.yml
+    converge: converge.yml
+    verify: verify.yml
+
+scenario:
+  create_sequence:
+    - create
+  destroy_sequence:
+    - destroy
+  test_sequence:
+    - destroy
+    - create
+    - converge
+    - verify
+    - destroy
+  check_sequence:
+    - destroy
+    - create
+    - converge
+  converge_sequence:
+    - create
+    - converge
+
+verifier:
+  name: ansible

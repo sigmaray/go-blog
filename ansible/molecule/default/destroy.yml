@@ -1,0 +1,20 @@
+---
+# Remove the Molecule Incus instance used for VPS playbook testing.
+
+- name: Destroy Molecule Incus instance
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    molecule_instance: molecule-go-blog
+  tasks:
+    - name: Check whether molecule instance exists
+      ansible.builtin.command: incus info {{ molecule_instance }}
+      register: molecule_instance_info
+      changed_when: false
+      failed_when: false
+
+    - name: Stop and delete molecule instance
+      ansible.builtin.command: incus delete --force {{ molecule_instance }}
+      when: molecule_instance_info.rc == 0

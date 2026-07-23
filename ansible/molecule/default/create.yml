@@ -1,0 +1,85 @@
+---
+# Create an Incus Ubuntu container with nesting so Docker can run inside.
+# Mounts the go-blog repo at /opt/src for SETUP_SOURCE_DIR-style deploys.
+#
+# security.privileged + raw.lxc AppArmor unconfined are required on Ubuntu 24.04
+# so nested Docker can start containers (avoids runc sysctl permission errors).
+
+- name: Create Molecule Incus instance
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    molecule_instance: molecule-go-blog
+    molecule_image: images:ubuntu/24.04
+    # ansible/ is MOLECULE_PROJECT_DIRECTORY; repo root is one level up.
+    molecule_repo_root: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/.."
+  tasks:
+    - name: Resolve absolute repo root path
+      ansible.builtin.command: realpath {{ molecule_repo_root }}
+      register: molecule_repo_root_abs
+      changed_when: false
+
+    - name: Check whether Incus CLI is available
+      ansible.builtin.command: incus version
+      register: molecule_incus_version
+      changed_when: false
+
+    - name: Check whether molecule instance already exists
+      ansible.builtin.command: incus info {{ molecule_instance }}
+      register: molecule_instance_info
+      changed_when: false
+      failed_when: false
+
+    - name: Launch Ubuntu Incus instance with Docker nesting
+      ansible.builtin.command: >
+        incus launch {{ molecule_image }} {{ molecule_instance }}
+        -c security.nesting=true
+        -c security.privileged=true
+        -c security.syscalls.intercept.mknod=true
+        -c security.syscalls.intercept.setxattr=true
+        -c limits.cpu=2
+        -c limits.memory=4GiB
+        -c raw.lxc=lxc.apparmor.profile=unconfined
+        -c linux.kernel_modules=overlay,br_netfilter,ip_tables,ip6_tables,iptable_nat,iptable_filter,nf_nat,xt_conntrack,nf_conntrack
+      when: molecule_instance_info.rc != 0
+
+    - name: Ensure instance is running
+      ansible.builtin.command: incus start {{ molecule_instance }}
+      register: molecule_start
+      changed_when: molecule_start.rc == 0
+      failed_when: false
+      when: molecule_instance_info.rc == 0
+
+    - name: Wait until instance accepts exec
+      ansible.builtin.command: incus exec {{ molecule_instance }} -- true
+      register: molecule_exec_ready
+      retries: 60
+      delay: 2
+      until: molecule_exec_ready.rc == 0
+      changed_when: false
+
+    - name: Ensure python3 exists inside the instance (for Ansible)
+      ansible.builtin.command: >
+        incus exec {{ molecule_instance }} --
+        bash -c "command -v python3 || (export DEBIAN_FRONTEND=noninteractive; apt-get update -qq && apt-get install -y -qq python3)"
+      changed_when: false
+
+    - name: Check whether src disk device exists
+      ansible.builtin.command: incus config device get {{ molecule_instance }} src source
+      register: molecule_src_device
+      changed_when: false
+      failed_when: false
+
+    - name: Mount repository into the instance at /opt/src
+      ansible.builtin.command: >
+        incus config device add {{ molecule_instance }} src disk
+        source={{ molecule_repo_root_abs.stdout }}
+        path=/opt/src
+      when: molecule_src_device.rc != 0
+
+    - name: Verify /opt/src/docker-compose.yml is visible in the instance
+      ansible.builtin.command: >
+        incus exec {{ molecule_instance }} -- test -f /opt/src/docker-compose.yml
+      changed_when: false

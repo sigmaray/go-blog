@@ -49,11 +49,42 @@ ansible-playbook playbooks/setup-all.yml \
   -e postgresql_password=ci-test-postgres-password
 ```
 
+## Molecule + Incus (isolated VPS-like test)
+
+Runs the real playbooks inside a nested Ubuntu Incus container (installs Docker, deploys Postgres + go-blog). Requires Incus on the host and membership in `incus-admin`.
+
+The Molecule instance is launched **privileged** with AppArmor unconfined so Docker-in-Incus can start containers (avoids `ip_unprivileged_port_start` / runc errors on Ubuntu 24.04).
+
+```bash
+# One-time host setup (Ubuntu)
+sudo apt-get install -y incus incus-client
+sudo usermod -aG incus-admin "$USER"   # then re-login or: newgrp incus-admin
+incus admin init --minimal
+
+cd ansible
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-molecule.txt
+.venv/bin/ansible-galaxy collection install -r molecule/default/collections.yml
+
+# Full create → converge → verify → destroy
+sg incus-admin -c '.venv/bin/molecule test'
+
+# Or step by step:
+sg incus-admin -c '.venv/bin/molecule create'
+sg incus-admin -c '.venv/bin/molecule converge'
+sg incus-admin -c '.venv/bin/molecule verify'
+sg incus-admin -c '.venv/bin/molecule destroy'
+```
+
+Scenario files live under `molecule/default/`. The instance is named `molecule-go-blog`; the repo is mounted at `/opt/src` inside it.
+
 ## Layout
 
 ```
 ansible/
 ├── ansible.cfg
+├── requirements-molecule.txt
+├── molecule/default/     # Incus Molecule scenario
 ├── inventory/
 │   ├── localhost.ini     # connection: local (CI)
 │   ├── example.ini       # copy to production.ini

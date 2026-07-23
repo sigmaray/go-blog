@@ -1,0 +1,8 @@
+---
+# Run the real VPS playbooks against the Incus instance (PostgreSQL, then go-blog).
+
+- name: Converge shared PostgreSQL
+  ansible.builtin.import_playbook: ../../playbooks/setup-postgresql.yml
+
+- name: Converge go-blog
+  ansible.builtin.import_playbook: ../../playbooks/setup-go-blog.yml
