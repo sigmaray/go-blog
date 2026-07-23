@@ -44,7 +44,10 @@ func (h *Handler) Login(c *gin.Context) {
 
 	session := sessions.Default(c)
 	session.Set("user", user.Username)
-	session.Save()
+	if err := session.Save(); err != nil {
+		c.String(http.StatusInternalServerError, "Failed to create session")
+		return
+	}
 	c.Redirect(http.StatusFound, "/admin/")
 }
 
@@ -53,6 +56,9 @@ func (h *Handler) Login(c *gin.Context) {
 func (h *Handler) Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
-	session.Save()
+	if err := session.Save(); err != nil {
+		c.String(http.StatusInternalServerError, "Failed to clear session")
+		return
+	}
 	c.Redirect(http.StatusFound, "/")
 }

@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,15 +18,86 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Check gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "The following files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2
+
       - name: Vet
         run: go vet ./...
 
       - name: Build
         run: go build -o blog .
 
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate production Compose file
+        run: |
+          cp .env.example .env
+          docker compose -f docker-compose.yml config --quiet
+
+      - name: Validate test Compose file
+        run: docker compose -f docker-compose.test.yml config --quiet
+
+      - name: Smoke test production Compose stack
+        run: |
+          set -euo pipefail
+
+          cleanup() {
+            docker compose -f docker-compose.yml down --volumes || true
+            docker rm -f shared-postgres || true
+            docker network rm infra || true
+          }
+          trap cleanup EXIT
+
+          docker network create infra
+
+          # Mimic shared Postgres on the external infra network (see README).
+          docker run -d \
+            --name shared-postgres \
+            --network infra \
+            -e POSTGRES_USER=goblog \
+            -e POSTGRES_PASSWORD=change-me-goblog \
+            -e POSTGRES_DB=goblog \
+            --health-cmd="pg_isready -U goblog -d goblog" \
+            --health-interval=2s \
+            --health-timeout=5s \
+            --health-retries=15 \
+            postgres:16-alpine
+
+          for _ in $(seq 1 30); do
+            status="$(docker inspect -f '{{.State.Health.Status}}' shared-postgres)"
+            if [ "$status" = "healthy" ]; then
+              break
+            fi
+            sleep 1
+          done
+          status="$(docker inspect -f '{{.State.Health.Status}}' shared-postgres)"
+          if [ "$status" != "healthy" ]; then
+            echo "shared-postgres is not healthy: $status"
+            docker logs shared-postgres || true
+            exit 1
+          fi
+
+          cp .env.example .env
+          docker compose -f docker-compose.yml up -d --build --wait
+          curl -fsS "http://127.0.0.1:8083/health"
+
   e2e:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, compose]
     steps:
       - uses: actions/checkout@v4
 

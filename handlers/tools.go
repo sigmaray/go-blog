@@ -148,7 +148,7 @@ func (h *Handler) scanQueryResults(sql string) ([]string, [][]string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	columns, err := rows.Columns()
 	if err != nil {

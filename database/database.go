@@ -87,7 +87,7 @@ func RunMigrations(migrations embed.FS) {
 	if err != nil {
 		log.Fatalf("Failed to get database handle: %v", err)
 	}
-	defer sqlDB.Close()
+	defer func() { _ = sqlDB.Close() }()
 
 	runMigrations(migrations, sqlDB)
 }
