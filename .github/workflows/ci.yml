@@ -51,45 +51,25 @@ jobs:
       - name: Validate test Compose file
         run: docker compose -f docker-compose.test.yml config --quiet
 
+      - name: Validate shared PostgreSQL Compose file
+        run: |
+          cp docs/example-postgresql-docker-compose/.env.example docs/example-postgresql-docker-compose/.env
+          docker compose -f docs/example-postgresql-docker-compose/docker-compose.yml config --quiet
+
       - name: Smoke test production Compose stack
         run: |
           set -euo pipefail
 
           cleanup() {
             docker compose -f docker-compose.yml down --volumes || true
-            docker rm -f shared-postgres || true
+            docker compose -f docs/example-postgresql-docker-compose/docker-compose.yml down --volumes || true
             docker network rm infra || true
           }
           trap cleanup EXIT
 
-          docker network create infra
-
-          # Mimic shared Postgres on the external infra network (see README).
-          docker run -d \
-            --name shared-postgres \
-            --network infra \
-            -e POSTGRES_USER=goblog \
-            -e POSTGRES_PASSWORD=change-me-goblog \
-            -e POSTGRES_DB=goblog \
-            --health-cmd="pg_isready -U goblog -d goblog" \
-            --health-interval=2s \
-            --health-timeout=5s \
-            --health-retries=15 \
-            postgres:16-alpine
-
-          for _ in $(seq 1 30); do
-            status="$(docker inspect -f '{{.State.Health.Status}}' shared-postgres)"
-            if [ "$status" = "healthy" ]; then
-              break
-            fi
-            sleep 1
-          done
-          status="$(docker inspect -f '{{.State.Health.Status}}' shared-postgres)"
-          if [ "$status" != "healthy" ]; then
-            echo "shared-postgres is not healthy: $status"
-            docker logs shared-postgres || true
-            exit 1
-          fi
+          # Shared Postgres on the infra network (see docs/example-postgresql-docker-compose).
+          cp docs/example-postgresql-docker-compose/.env.example docs/example-postgresql-docker-compose/.env
+          docker compose -f docs/example-postgresql-docker-compose/docker-compose.yml up -d --wait
 
           cp .env.example .env
           docker compose -f docker-compose.yml up -d --build --wait

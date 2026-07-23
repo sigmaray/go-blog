@@ -30,9 +30,9 @@ func envOrDefault(key, fallback string) string {
 }
 
 func DSN() string {
-	host := envOrDefault("GO_BLOG_DATABASE_HOST", "shared-postgres")
+	host := envOrDefault("GO_BLOG_DATABASE_HOST", "postgresql")
 	port := envOrDefault("GO_BLOG_DATABASE_PORT", "5432")
-	user := envOrDefault("GO_BLOG_DATABASE_USER", "goblog")
+	user := envOrDefault("GO_BLOG_DATABASE_USER", "postgres")
 	dbname := envOrDefault("GO_BLOG_DATABASE_NAME", "goblog")
 	password := os.Getenv("GO_BLOG_DATABASE_PASSWORD")
 

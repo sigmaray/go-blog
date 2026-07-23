@@ -63,10 +63,12 @@ go run . posts-seed 10
 
 The production `docker-compose.yml` expects:
 
-1. A running PostgreSQL instance (default host: `shared-postgres`)
+1. A running PostgreSQL instance (default host: `postgresql`)
 2. An external Docker network named `infra`
 
-Create the network once if it does not exist:
+For a shared PostgreSQL 16 setup on a VPS (one instance, multiple Docker apps), see [docs/example-postgresql-docker-compose/README.md](docs/example-postgresql-docker-compose/README.md).
+
+Create the network once if it does not exist (the shared Postgres compose also creates it):
 
 ```bash
 docker network create infra
@@ -95,7 +97,7 @@ The container runs as a non-root `appuser`, listens on port `8083`, and uses `GI
 - Create an admin with `./blog users-create`; avoid `users-seed` in production
 - Set `GO_BLOG_SESSION_SECURE=1` when TLS terminates at a reverse proxy
 - Put HTTPS in front of the app (nginx, Caddy, Traefik, etc.)
-- Back up the PostgreSQL database regularly
+- Use a managed PostgreSQL instance, or the shared VPS stack in [docs/example-postgresql-docker-compose](docs/example-postgresql-docker-compose/README.md), and back it up regularly
 
 ### Health check
 
@@ -117,7 +119,7 @@ To run tests against an already running server:
 SKIP_DOCKER_SETUP=1 GO_BLOG_HTTP_PORT=8083 npm test
 ```
 
-CI runs `gofmt`, `golangci-lint`, `go vet`, `go build`, Compose validation, a production Compose smoke test (external `infra` network + Postgres), and the Playwright suite on every push and pull request (see `.github/workflows/ci.yml`). A separate advisory workflow runs `govulncheck` and Trivy on the image and filesystem (see `.github/workflows/security.yml`); findings are printed in the job log / step summary and do not fail CI. Dependabot opens weekly PRs for Go, Docker, npm, and GitHub Actions updates (see `.github/workflows/dependabot.yml`).
+CI runs `gofmt`, `golangci-lint`, `go vet`, `go build`, Compose validation, a production Compose smoke test (shared Postgres from `docs/example-postgresql-docker-compose` + the app on the `infra` network), and the Playwright suite on every push and pull request (see `.github/workflows/ci.yml`). A separate workflow exercises the PostgreSQL VPS bootstrap script (see `.github/workflows/vps-setup.yml`). A separate advisory workflow runs `govulncheck` and Trivy on the image and filesystem (see `.github/workflows/security.yml`); findings are printed in the job log / step summary and do not fail CI. Dependabot opens weekly PRs for Go, Docker, npm, and GitHub Actions updates (see `.github/workflows/dependabot.yml`).
 
 ## Project layout
 
@@ -131,4 +133,5 @@ database/            DB connection and migrations
 migrations/          SQL migrations (goose)
 templates/           HTML templates
 tests/               Playwright E2E tests
+docs/                Deployment examples (shared PostgreSQL)
 ```
