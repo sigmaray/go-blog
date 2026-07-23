@@ -13,13 +13,13 @@ func (h *Handler) UsersList(c *gin.Context) {
 	var users []models.User
 	h.DB.Order("created_at desc").Find(&users)
 
-	c.HTML(http.StatusOK, "admin/users_list.html", gin.H{
+	h.HTML(c, http.StatusOK, "admin/users_list.html", gin.H{
 		"Users": users,
 	})
 }
 
 func (h *Handler) NewUserPage(c *gin.Context) {
-	c.HTML(http.StatusOK, "admin/users_create.html", gin.H{})
+	h.HTML(c, http.StatusOK, "admin/users_create.html", gin.H{})
 }
 
 type CreateUserInput struct {
@@ -31,7 +31,7 @@ type CreateUserInput struct {
 func (h *Handler) CreateUser(c *gin.Context) {
 	var input CreateUserInput
 	if err := c.ShouldBind(&input); err != nil {
-		c.HTML(http.StatusBadRequest, "admin/users_create.html", gin.H{
+		h.HTML(c, http.StatusBadRequest, "admin/users_create.html", gin.H{
 			"Error":    "Invalid form data",
 			"Username": input.Username,
 		})
@@ -39,7 +39,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 	}
 
 	if err := h.Validate.Struct(input); err != nil {
-		c.HTML(http.StatusBadRequest, "admin/users_create.html", gin.H{
+		h.HTML(c, http.StatusBadRequest, "admin/users_create.html", gin.H{
 			"Error":    "Username and password are required",
 			"Username": input.Username,
 		})
@@ -47,7 +47,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 	}
 
 	if input.Password != input.PasswordConfirm {
-		c.HTML(http.StatusBadRequest, "admin/users_create.html", gin.H{
+		h.HTML(c, http.StatusBadRequest, "admin/users_create.html", gin.H{
 			"Error":    "Passwords do not match",
 			"Username": input.Username,
 		})
@@ -55,7 +55,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 	}
 
 	if _, err := models.CreateUser(h.DB, input.Username, input.Password); err != nil {
-		c.HTML(http.StatusInternalServerError, "admin/users_create.html", gin.H{
+		h.HTML(c, http.StatusInternalServerError, "admin/users_create.html", gin.H{
 			"Error":    "Failed to create user (username may already exist)",
 			"Username": input.Username,
 		})
@@ -78,7 +78,7 @@ func (h *Handler) EditUserPage(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "admin/users_edit.html", gin.H{
+	h.HTML(c, http.StatusOK, "admin/users_edit.html", gin.H{
 		"User": user,
 	})
 }
@@ -104,7 +104,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 
 	var input UpdateUserInput
 	if err := c.ShouldBind(&input); err != nil {
-		c.HTML(http.StatusBadRequest, "admin/users_edit.html", gin.H{
+		h.HTML(c, http.StatusBadRequest, "admin/users_edit.html", gin.H{
 			"Error": "Invalid form data",
 			"User":  user,
 		})
@@ -112,7 +112,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 	}
 
 	if err := h.Validate.Struct(input); err != nil {
-		c.HTML(http.StatusBadRequest, "admin/users_edit.html", gin.H{
+		h.HTML(c, http.StatusBadRequest, "admin/users_edit.html", gin.H{
 			"Error": "Username is required",
 			"User":  user,
 		})
@@ -120,7 +120,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 	}
 
 	if input.Password != "" && input.Password != input.PasswordConfirm {
-		c.HTML(http.StatusBadRequest, "admin/users_edit.html", gin.H{
+		h.HTML(c, http.StatusBadRequest, "admin/users_edit.html", gin.H{
 			"Error": "Passwords do not match",
 			"User":  user,
 		})
@@ -131,7 +131,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 	if input.Password != "" {
 		hash, err := models.HashPassword(input.Password)
 		if err != nil {
-			c.HTML(http.StatusInternalServerError, "admin/users_edit.html", gin.H{
+			h.HTML(c, http.StatusInternalServerError, "admin/users_edit.html", gin.H{
 				"Error": "Failed to update password",
 				"User":  user,
 			})
@@ -141,7 +141,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 	}
 
 	if err := h.DB.Save(&user).Error; err != nil {
-		c.HTML(http.StatusInternalServerError, "admin/users_edit.html", gin.H{
+		h.HTML(c, http.StatusInternalServerError, "admin/users_edit.html", gin.H{
 			"Error": "Failed to update user (username may already exist)",
 			"User":  user,
 		})

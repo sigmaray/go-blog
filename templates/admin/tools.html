@@ -1,6 +1,4 @@
 {{ define "admin/tools.html" }}
-{{ template "admin/header.html" . }}
-
 {{ if .Error }}<div class="alert alert-danger error">{{ .Error }}</div>{{ end }}
 {{ if .Message }}<div class="alert alert-success">{{ .Message }}</div>{{ end }}
 
@@ -63,6 +61,4 @@
     <p class="text-muted mt-3">{{ .RowsAffected }} row(s) affected</p>
     {{ end }}
 </div>
-
-{{ template "admin/footer.html" . }}
 {{ end }}

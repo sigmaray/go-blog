@@ -12,6 +12,25 @@ export async function login(page: Page, username = 'admin', password = 'admin') 
   await expect(page).toHaveURL(/\/admin/);
 }
 
+/** Waits until the admin post editor finished initializing TinyMCE. */
+export async function waitForPostEditor(page: Page) {
+  await expect(page.locator('[data-post-editor]')).toHaveAttribute(
+    'data-post-editor-ready',
+    'true',
+  );
+}
+
+/**
+ * Sets post body content through the HTML mode of the admin editor.
+ * page is the Playwright page.
+ * content is the raw HTML (or plain text) to store in the content field.
+ */
+export async function setPostContent(page: Page, content: string) {
+  await waitForPostEditor(page);
+  await page.getByRole('button', { name: 'HTML', exact: true }).click();
+  await page.locator('#content').fill(content);
+}
+
 export async function createPost(
   page: Page,
   opts: { title?: string; content: string; tags?: string; hidden?: boolean },
@@ -21,7 +40,7 @@ export async function createPost(
   if (opts.title) {
     await page.locator('#title').fill(opts.title);
   }
-  await page.locator('#content').fill(opts.content);
+  await setPostContent(page, opts.content);
   if (opts.tags) {
     await page.locator('#tags').fill(opts.tags);
   }

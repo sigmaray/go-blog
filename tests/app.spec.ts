@@ -11,6 +11,14 @@ test.describe('public', () => {
     await expect(page.locator('body')).toContainText(/Go Blog/i);
   });
 
+  test('does not load admin editor assets on public pages', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('link[href="/static/css/admin-post-editor.css"]')).toHaveCount(0);
+    await expect(page.locator('script[src="/static/js/admin-post-editor.js"]')).toHaveCount(0);
+    await expect(page.locator('script[src*="tinymce"]')).toHaveCount(0);
+  });
+
   test('serves health endpoint', async ({ request }) => {
     const response = await request.get('/health');
     expect(response.ok()).toBeTruthy();

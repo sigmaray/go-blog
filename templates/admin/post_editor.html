@@ -1,0 +1,51 @@
+{{ define "admin/post_editor.html" }}
+<div class="post-editor mb-3" data-post-editor data-post-editor-active-mode="visual">
+    <label class="form-label" id="content-label">Content</label>
+
+    <div class="post-editor__modes btn-group mb-2" role="group" aria-label="Content editor mode">
+        <button type="button"
+                class="btn btn-outline-secondary post-editor__mode-btn is-active"
+                data-post-editor-mode="visual"
+                aria-pressed="true">Visual</button>
+        <button type="button"
+                class="btn btn-outline-secondary post-editor__mode-btn"
+                data-post-editor-mode="markdown"
+                aria-pressed="false">Markdown</button>
+        <button type="button"
+                class="btn btn-outline-secondary post-editor__mode-btn"
+                data-post-editor-mode="html"
+                aria-pressed="false">HTML</button>
+    </div>
+
+    <div class="post-editor__panel post-editor__panel--visual" data-post-editor-panel="visual">
+        <label for="post-editor-visual" class="visually-hidden">Visual content editor</label>
+        <textarea id="post-editor-visual" class="form-control" rows="12" aria-labelledby="content-label"></textarea>
+    </div>
+
+    <div class="post-editor__panel post-editor__panel--markdown post-editor__panel--hidden" data-post-editor-panel="markdown" hidden>
+        <label for="post-editor-markdown" class="visually-hidden">Markdown content editor</label>
+        <textarea id="post-editor-markdown"
+                  class="form-control font-monospace post-editor__markdown"
+                  data-post-editor-markdown
+                  rows="16"
+                  aria-labelledby="content-label"
+                  spellcheck="false"></textarea>
+    </div>
+
+    <div class="post-editor__panel post-editor__panel--html post-editor__panel--hidden" data-post-editor-panel="html" hidden>
+        <label for="content" class="visually-hidden">HTML content editor</label>
+        <textarea id="content"
+                  name="content"
+                  class="form-control font-monospace post-editor__html"
+                  data-post-editor-html
+                  rows="16"
+                  aria-labelledby="content-label"
+                  spellcheck="false">{{ if .Content }}{{ .Content }}{{ else if .Post }}{{ .Post.Content }}{{ end }}</textarea>
+    </div>
+
+    <div class="form-text">
+        Edit visually, as Markdown, or as raw HTML. Safe HTML is stored
+        (p, a, strong, lists, inline CSS styles, etc.). Scripts and unsafe markup are removed on save.
+    </div>
+</div>
+{{ end }}

@@ -1,6 +1,4 @@
 {{ define "admin/edit_post.html" }}
-{{ template "admin/header.html" . }}
-
 <h2>Edit Post</h2>
 
 {{ if .Error }}
@@ -13,11 +11,7 @@
         <input type="text" class="form-control" id="title" name="title" value="{{ if .Title }}{{ .Title }}{{ else }}{{ .Post.Title }}{{ end }}">
     </div>
 
-    <div class="mb-3">
-        <label for="content" class="form-label">Content (HTML)</label>
-        <textarea class="form-control" id="content" name="content" rows="12" required>{{ if .Content }}{{ .Content }}{{ else }}{{ .Post.Content }}{{ end }}</textarea>
-        <div class="form-text">Safe HTML is allowed (p, a, strong, lists, inline CSS styles, etc.). Scripts and unsafe markup are removed.</div>
-    </div>
+    {{ template "admin/post_editor.html" . }}
 
     <div class="mb-3">
         <label for="tags" class="form-label">Tags (Comma separated, Optional)</label>
@@ -32,6 +26,4 @@
     <button type="submit" class="btn btn-primary">Update Post</button>
     <a href="/admin/" class="btn btn-link">Cancel</a>
 </form>
-
-{{ template "admin/footer.html" . }}
 {{ end }}

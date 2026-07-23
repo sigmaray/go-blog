@@ -15,13 +15,13 @@ type SQLInput struct {
 }
 
 func (h *Handler) ToolsPage(c *gin.Context) {
-	c.HTML(http.StatusOK, "admin/tools.html", gin.H{})
+	h.HTML(c, http.StatusOK, "admin/tools.html", gin.H{})
 }
 
 func (h *Handler) ExecuteSQL(c *gin.Context) {
 	var input SQLInput
 	if err := c.ShouldBind(&input); err != nil {
-		c.HTML(http.StatusBadRequest, "admin/tools.html", gin.H{
+		h.HTML(c, http.StatusBadRequest, "admin/tools.html", gin.H{
 			"Error": "Invalid form data",
 		})
 		return
@@ -29,7 +29,7 @@ func (h *Handler) ExecuteSQL(c *gin.Context) {
 
 	query := strings.TrimSpace(input.Query)
 	if query == "" {
-		c.HTML(http.StatusBadRequest, "admin/tools.html", gin.H{
+		h.HTML(c, http.StatusBadRequest, "admin/tools.html", gin.H{
 			"Error": "Query is required",
 			"Query": input.Query,
 		})
@@ -37,7 +37,7 @@ func (h *Handler) ExecuteSQL(c *gin.Context) {
 	}
 
 	if hasMultipleStatements(query) {
-		c.HTML(http.StatusBadRequest, "admin/tools.html", gin.H{
+		h.HTML(c, http.StatusBadRequest, "admin/tools.html", gin.H{
 			"Error": "Only one SQL statement is allowed",
 			"Query": input.Query,
 		})
@@ -49,7 +49,7 @@ func (h *Handler) ExecuteSQL(c *gin.Context) {
 	if isReadQuery(query) {
 		columns, rows, err := h.scanQueryResults(query)
 		if err != nil {
-			c.HTML(http.StatusBadRequest, "admin/tools.html", gin.H{
+			h.HTML(c, http.StatusBadRequest, "admin/tools.html", gin.H{
 				"Error": err.Error(),
 				"Query": input.Query,
 			})
@@ -61,7 +61,7 @@ func (h *Handler) ExecuteSQL(c *gin.Context) {
 	} else {
 		result := h.DB.Exec(query)
 		if result.Error != nil {
-			c.HTML(http.StatusBadRequest, "admin/tools.html", gin.H{
+			h.HTML(c, http.StatusBadRequest, "admin/tools.html", gin.H{
 				"Error": result.Error.Error(),
 				"Query": input.Query,
 			})
@@ -71,7 +71,7 @@ func (h *Handler) ExecuteSQL(c *gin.Context) {
 		data["RowsAffected"] = result.RowsAffected
 	}
 
-	c.HTML(http.StatusOK, "admin/tools.html", data)
+	h.HTML(c, http.StatusOK, "admin/tools.html", data)
 }
 
 type PostsSeedInput struct {
@@ -81,7 +81,7 @@ type PostsSeedInput struct {
 func (h *Handler) PostsSeed(c *gin.Context) {
 	var input PostsSeedInput
 	if err := c.ShouldBind(&input); err != nil {
-		c.HTML(http.StatusBadRequest, "admin/tools.html", gin.H{
+		h.HTML(c, http.StatusBadRequest, "admin/tools.html", gin.H{
 			"Error": "Invalid form data",
 		})
 		return
@@ -94,13 +94,13 @@ func (h *Handler) PostsSeed(c *gin.Context) {
 
 	created, err := postops.Seed(h.DB, count)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "admin/tools.html", gin.H{
+		h.HTML(c, http.StatusBadRequest, "admin/tools.html", gin.H{
 			"Error": err.Error(),
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "admin/tools.html", gin.H{
+	h.HTML(c, http.StatusOK, "admin/tools.html", gin.H{
 		"Message": fmt.Sprintf("Created %d post(s).", created),
 	})
 }
@@ -108,13 +108,13 @@ func (h *Handler) PostsSeed(c *gin.Context) {
 func (h *Handler) PostsClear(c *gin.Context) {
 	postsDeleted, tagsDeleted, err := postops.Clear(h.DB)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "admin/tools.html", gin.H{
+		h.HTML(c, http.StatusBadRequest, "admin/tools.html", gin.H{
 			"Error": err.Error(),
 		})
 		return
 	}
 
-	c.HTML(http.StatusOK, "admin/tools.html", gin.H{
+	h.HTML(c, http.StatusOK, "admin/tools.html", gin.H{
 		"Message": fmt.Sprintf("Deleted %d post(s) and %d tag(s).", postsDeleted, tagsDeleted),
 	})
 }

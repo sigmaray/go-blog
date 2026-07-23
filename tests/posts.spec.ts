@@ -1,15 +1,21 @@
 import { expect, test } from '@playwright/test';
 
-import { acceptNextDialog, createPost, login, uniqueId } from './helpers';
+import {
+  acceptNextDialog,
+  createPost,
+  login,
+  setPostContent,
+  uniqueId,
+  waitForPostEditor,
+} from './helpers';
 
 test.describe.serial('posts', () => {
   test('validates required content on create', async ({ page }) => {
     await login(page);
     await page.goto('/admin/posts/new', { waitUntil: 'domcontentloaded' });
+    await waitForPostEditor(page);
 
     await page.locator('#title').fill('Title without content');
-    await page.locator('#content').fill('');
-    await page.locator('#content').evaluate((field) => field.removeAttribute('required'));
     await page.getByRole('button', { name: /create post/i }).click();
 
     await expect(page.locator('.error')).toContainText('Content is required');
@@ -115,7 +121,7 @@ test.describe.serial('posts', () => {
     await expect(page.getByRole('heading', { name: 'Edit Post' })).toBeVisible();
 
     await page.locator('#title').fill(updatedTitle);
-    await page.locator('#content').fill('Updated content');
+    await setPostContent(page, 'Updated content');
     await page.locator('#tags').fill(updatedTag);
     await page.getByRole('button', { name: /update post/i }).click();
     await expect(page).toHaveURL(/\/admin\/?$/);
@@ -126,6 +132,62 @@ test.describe.serial('posts', () => {
     const post = page.locator('.post').filter({ hasText: updatedTitle });
     await expect(post).toBeVisible();
     await expect(post.locator('.post-content')).toContainText('Updated content');
+  });
+
+  test('creates a post using markdown mode', async ({ page }) => {
+    await login(page);
+    const title = uniqueId('markdown-post');
+    const marker = uniqueId('md-body');
+
+    await page.goto('/admin/posts/new', { waitUntil: 'domcontentloaded' });
+    await waitForPostEditor(page);
+    await page.locator('#title').fill(title);
+    await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+    await page.locator('#post-editor-markdown').fill(`**${marker}**`);
+    await page.getByRole('button', { name: /create post/i }).click();
+    await expect(page).toHaveURL(/\/admin\/?$/);
+
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const post = page.locator('.post').filter({ hasText: title });
+    await expect(post.locator('.post-content strong')).toContainText(marker);
+  });
+
+  test('creates a post using visual mode', async ({ page }) => {
+    await login(page);
+    const title = uniqueId('visual-post');
+    const marker = uniqueId('visual-body');
+
+    await page.goto('/admin/posts/new', { waitUntil: 'domcontentloaded' });
+    await waitForPostEditor(page);
+    await page.locator('#title').fill(title);
+    await page.getByRole('button', { name: 'Visual', exact: true }).click();
+    const visualFrame = page.frameLocator('iframe.tox-edit-area__iframe');
+    await visualFrame.locator('body').click();
+    await visualFrame.locator('body').fill(marker);
+    await page.getByRole('button', { name: /create post/i }).click();
+    await expect(page).toHaveURL(/\/admin\/?$/);
+
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const post = page.locator('.post').filter({ hasText: title });
+    await expect(post.locator('.post-content')).toContainText(marker);
+  });
+
+  test('switches between visual, markdown, and html modes', async ({ page }) => {
+    await login(page);
+    await page.goto('/admin/posts/new', { waitUntil: 'domcontentloaded' });
+    await waitForPostEditor(page);
+
+    await setPostContent(page, '<p>Mode switch sample</p>');
+    await page.getByRole('button', { name: 'Markdown', exact: true }).click();
+    await expect(page.locator('#post-editor-markdown')).toBeVisible();
+    await expect(page.locator('#post-editor-markdown')).toHaveValue(/Mode switch sample/);
+
+    await page.getByRole('button', { name: 'Visual', exact: true }).click();
+    await expect(page.locator('iframe.tox-edit-area__iframe')).toBeVisible();
+
+    await page.getByRole('button', { name: 'HTML', exact: true }).click();
+    await expect(page.locator('#content')).toBeVisible();
+    await expect(page.locator('#content')).toHaveValue(/Mode switch sample/);
   });
 
   test('deletes a post', async ({ page }) => {

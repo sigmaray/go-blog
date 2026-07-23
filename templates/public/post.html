@@ -1,6 +1,4 @@
 {{ define "public/post.html" }}
-{{ template "public/header.html" . }}
-
 <div class="card mb-3 post">
     <div class="card-body">
         {{ if .Post.Title }}
@@ -23,6 +21,4 @@
 </div>
 
 <p><a href="/" class="text-decoration-none">&larr; Back to all posts</a></p>
-
-{{ template "public/footer.html" . }}
 {{ end }}

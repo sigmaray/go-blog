@@ -1,6 +1,4 @@
 {{ define "admin/users_create.html" }}
-{{ template "admin/header.html" . }}
-
 <h2>Create New User</h2>
 
 {{ if .Error }}
@@ -26,6 +24,4 @@
     <button type="submit" class="btn btn-primary">Create User</button>
     <a href="/admin/users" class="btn btn-link">Cancel</a>
 </form>
-
-{{ template "admin/footer.html" . }}
 {{ end }}

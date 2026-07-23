@@ -1,6 +1,4 @@
 {{ define "public/index.html" }}
-{{ template "public/header.html" . }}
-
 {{ if .Tag }}
     <h3>Showing posts for tag: {{ .Tag }}</h3>
     <a href="/" class="btn btn-link p-0 mb-3">Clear filter</a>
@@ -50,6 +48,4 @@
     </ul>
 </nav>
 {{ end }}
-
-{{ template "public/footer.html" . }}
 {{ end }}

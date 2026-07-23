@@ -19,6 +19,7 @@ RUN apk add --no-cache tzdata wget \
 
 COPY --from=builder /app/blog .
 COPY --from=builder /app/templates ./templates
+COPY --from=builder /app/static ./static
 COPY --from=builder /app/robots.txt ./robots.txt
 
 RUN chown -R appuser:appgroup /app

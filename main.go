@@ -2,7 +2,6 @@ package main
 
 import (
 	"embed"
-	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -11,7 +10,6 @@ import (
 	"go-blog/database"
 	"go-blog/handlers"
 	"go-blog/middleware"
-	"go-blog/sanitize"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -85,28 +83,9 @@ func runServer() {
 	})
 	r.Use(sessions.Sessions("mysession", store))
 
-	r.SetFuncMap(template.FuncMap{
-		"add": func(a, b int) int {
-			return a + b
-		},
-		"subtract": func(a, b int) int {
-			return a - b
-		},
-		"len": func(v interface{}) int {
-			switch s := v.(type) {
-			case []string:
-				return len(s)
-			default:
-				return 0
-			}
-		},
-		"safeHTML": func(s string) template.HTML {
-			return template.HTML(sanitize.HTML(s))
-		},
-	})
+	r.SetHTMLTemplate(loadHTMLTemplates())
 
-	r.LoadHTMLGlob("templates/**/*")
-
+	r.Static("/static", "./static")
 	r.StaticFile("/robots.txt", "robots.txt")
 
 	r.GET("/", h.Index)
