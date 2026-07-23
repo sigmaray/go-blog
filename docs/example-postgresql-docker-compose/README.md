@@ -88,6 +88,8 @@ docs/example-postgresql-docker-compose/
 └── scripts/
     ├── create-database.sh            # add a database on a running server
     └── setup-vps.sh                  # bootstrap Ubuntu VPS and deploy the stack
+
+Ansible alternative: [`ansible/`](../../ansible/) (roles `postgresql` + `go_blog`, tested in GitHub Actions).
 ```
 
 ## Adding a database for a new project
@@ -139,6 +141,15 @@ sudo bash docs/example-postgresql-docker-compose/scripts/setup-vps.sh --swap
 ```
 
 The script deploys to `~/r/d/postgresql` by default, generates `POSTGRES_PASSWORD` in `.env` when unset, and starts the stack. Override with environment variables (see script header).
+
+Ansible alternative (same stack, from a control machine):
+
+```bash
+cd ../../ansible
+ansible-playbook -i inventory/production.ini playbooks/setup-postgresql.yml
+```
+
+See [`ansible/README.md`](../../ansible/README.md).
 
 Manual alternative:
 

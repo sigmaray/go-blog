@@ -1,0 +1,86 @@
+---
+# Start the go-blog compose stack, wait for /health, and run migrations.
+# Skips rebuild when the tree is current and the stack is already healthy.
+
+- name: Check whether go-blog service is running
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ go_blog_deploy_dir }}"
+    docker compose ps --status running --format '{% raw %}{{.Service}}{% endraw %}' | grep -qx go-blog
+  args:
+    executable: /bin/bash
+  register: go_blog_running
+  changed_when: false
+  failed_when: false
+
+- name: Check whether go-blog /health succeeds
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ go_blog_deploy_dir }}"
+    docker compose exec -T go-blog wget -q -O /dev/null http://127.0.0.1:8083/health
+  args:
+    executable: /bin/bash
+  register: go_blog_ready_now
+  changed_when: false
+  failed_when: false
+  when: go_blog_running.rc == 0
+
+- name: Decide go-blog compose action
+  ansible.builtin.set_fact:
+    go_blog_compose_action: >-
+      {{
+        'rebuild' if (setup_force | bool or go_blog_deploy_changed | bool)
+        else (
+          'skip' if (
+            go_blog_running.rc == 0
+            and (go_blog_ready_now.rc | default(1) == 0)
+            and not (go_blog_deploy_changed | bool)
+          )
+          else 'up'
+        )
+      }}
+
+- name: Skip go-blog redeploy when already healthy
+  ansible.builtin.debug:
+    msg: >-
+      go-blog is already deployed at {{ go_blog_git_ref }} and the stack is healthy — skipping redeploy.
+      Use setup_force=true to rebuild and restart anyway.
+  when: go_blog_compose_action == 'skip'
+
+- name: Build and start go-blog compose stack
+  ansible.builtin.command: docker compose up -d --build
+  args:
+    chdir: "{{ go_blog_deploy_dir }}"
+  when: go_blog_compose_action == 'rebuild'
+
+- name: Start go-blog compose stack without rebuild
+  ansible.builtin.command: docker compose up -d
+  args:
+    chdir: "{{ go_blog_deploy_dir }}"
+  when: go_blog_compose_action == 'up'
+
+- name: Wait for go-blog /health
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ go_blog_deploy_dir }}"
+    deadline=$((SECONDS + {{ go_blog_ready_timeout_sec | int }}))
+    while (( SECONDS < deadline )); do
+      if docker compose exec -T go-blog wget -q -O /dev/null http://127.0.0.1:8083/health; then
+        exit 0
+      fi
+      sleep 2
+    done
+    docker compose logs --tail=50 go-blog || true
+    exit 1
+  args:
+    executable: /bin/bash
+  when: go_blog_compose_action != 'skip'
+  changed_when: false
+
+- name: Run database migrations
+  ansible.builtin.command: docker compose exec -T go-blog ./blog migrate
+  args:
+    chdir: "{{ go_blog_deploy_dir }}"
+  when:
+    - go_blog_compose_action != 'skip'
+    - not (go_blog_skip_migrate | bool)

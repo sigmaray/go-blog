@@ -1,0 +1,18 @@
+---
+# Install etckeeper so /etc changes are tracked in git on the VPS.
+# Skipped entirely when setup_skip_apt is true.
+
+- name: Check whether etckeeper is already installed
+  ansible.builtin.shell: command -v etckeeper
+  args:
+    executable: /bin/bash
+  register: etckeeper_check
+  changed_when: false
+  failed_when: false
+
+- name: Install etckeeper with apt
+  ansible.builtin.apt:
+    name: etckeeper
+    state: present
+    update_cache: true
+  when: etckeeper_check.rc != 0

@@ -1,0 +1,78 @@
+---
+# Start the PostgreSQL compose stack and wait until pg_isready succeeds.
+# Skips rebuild when the tree is current and the stack is already healthy.
+
+- name: Check whether postgres service is running
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ postgresql_deploy_dir }}"
+    docker compose ps --status running --format '{% raw %}{{.Service}}{% endraw %}' | grep -qx postgres
+  args:
+    executable: /bin/bash
+  register: postgresql_running
+  changed_when: false
+  failed_when: false
+
+- name: Check whether PostgreSQL accepts connections
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ postgresql_deploy_dir }}"
+    docker compose exec -T postgres pg_isready -U "{{ postgresql_user_effective }}" -d postgres -q
+  args:
+    executable: /bin/bash
+  register: postgresql_ready_now
+  changed_when: false
+  failed_when: false
+  when: postgresql_running.rc == 0
+
+- name: Decide PostgreSQL compose action
+  ansible.builtin.set_fact:
+    postgresql_compose_action: >-
+      {{
+        'rebuild' if (setup_force | bool or postgresql_deploy_changed | bool)
+        else (
+          'skip' if (
+            postgresql_running.rc == 0
+            and (postgresql_ready_now.rc | default(1) == 0)
+            and not (postgresql_deploy_changed | bool)
+          )
+          else 'up'
+        )
+      }}
+
+- name: Skip PostgreSQL redeploy when already healthy
+  ansible.builtin.debug:
+    msg: >-
+      PostgreSQL is already deployed at {{ postgresql_git_ref }} and the stack is healthy — skipping redeploy.
+      Use setup_force=true to rebuild and restart anyway.
+  when: postgresql_compose_action == 'skip'
+
+- name: Build and start PostgreSQL compose stack
+  ansible.builtin.command: docker compose up -d --build
+  args:
+    chdir: "{{ postgresql_deploy_dir }}"
+  when: postgresql_compose_action == 'rebuild'
+
+- name: Start PostgreSQL compose stack without rebuild
+  ansible.builtin.command: docker compose up -d
+  args:
+    chdir: "{{ postgresql_deploy_dir }}"
+  when: postgresql_compose_action == 'up'
+
+- name: Wait for PostgreSQL readiness
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd "{{ postgresql_deploy_dir }}"
+    deadline=$((SECONDS + {{ postgresql_ready_timeout_sec | int }}))
+    while (( SECONDS < deadline )); do
+      if docker compose exec -T postgres pg_isready -U "{{ postgresql_user_effective }}" -d postgres -q; then
+        exit 0
+      fi
+      sleep 2
+    done
+    docker compose logs --tail=50 postgres || true
+    exit 1
+  args:
+    executable: /bin/bash
+  when: postgresql_compose_action != 'skip'
+  changed_when: false

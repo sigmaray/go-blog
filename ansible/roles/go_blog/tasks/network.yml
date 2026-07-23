@@ -1,0 +1,24 @@
+---
+# Ensure the external Docker network infra exists and warn if postgresql is missing.
+
+- name: Check whether Docker network infra exists
+  ansible.builtin.command: docker network inspect infra
+  register: go_blog_infra_network
+  changed_when: false
+  failed_when: false
+
+- name: Create Docker network infra
+  ansible.builtin.command: docker network create infra
+  when: go_blog_infra_network.rc != 0
+
+- name: Check whether postgresql container exists
+  ansible.builtin.command: docker container inspect postgresql
+  register: go_blog_postgresql_container
+  changed_when: false
+  failed_when: false
+
+- name: Warn when postgresql container is missing
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: postgresql container not found — deploy shared Postgres first if /health fails
+  when: go_blog_postgresql_container.rc != 0

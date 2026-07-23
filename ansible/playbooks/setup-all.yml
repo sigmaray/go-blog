@@ -1,0 +1,18 @@
+---
+# Deploy shared PostgreSQL first, then go-blog, on the same VPS.
+# Usage:
+#   ansible-playbook playbooks/setup-all.yml
+#   ansible-playbook -i inventory/example.ini playbooks/setup-all.yml -e setup_swap=true
+
+- name: Setup shared PostgreSQL on VPS
+  hosts: vps
+  become: true
+  roles:
+    - role: common
+    - role: postgresql
+
+- name: Setup go-blog on VPS
+  hosts: vps
+  become: true
+  roles:
+    - role: go_blog

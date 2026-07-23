@@ -1,0 +1,37 @@
+---
+# Defaults for go-blog VPS deploy (mirrors scripts/setup-vps.sh environment variables).
+
+go_blog_deploy_dir: "{{ ansible_env.HOME | default('/root') }}/r/d/go-blog"
+go_blog_repo_url: "{{ repo_url }}"
+go_blog_git_ref: "{{ git_ref }}"
+go_blog_repo_subpath: ""
+go_blog_repo_cache_dir: "{{ go_blog_deploy_dir }}/.repo-cache"
+
+# When set on the target host, copy this tree instead of cloning (CI / local test).
+go_blog_setup_source_dir: ""
+
+go_blog_postgres_env_file: "{{ ansible_env.HOME | default('/root') }}/r/d/postgresql/.env"
+
+go_blog_http_port: "8083"
+gin_mode: release
+go_blog_session_secret: ""
+go_blog_session_secure: "0"
+go_blog_database_host: postgresql
+go_blog_database_port: "5432"
+go_blog_database_name: goblog
+go_blog_database_user: postgres
+go_blog_database_password: ""
+
+go_blog_skip_migrate: false
+go_blog_ready_timeout_sec: 180
+
+# Rebuild even when deploy tree and health checks are current.
+setup_force: false
+
+go_blog_rsync_excludes:
+  - .env
+  - .repo-cache
+  - .git
+  - node_modules
+  - test-results
+  - playwright-report

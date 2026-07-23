@@ -1,0 +1,10 @@
+---
+# Defaults for the shared VPS bootstrap role.
+# Arguments map to SETUP_* flags from the bash setup-vps.sh scripts.
+
+setup_skip_apt: false
+setup_skip_docker_install: false
+setup_force: false
+setup_swap: false
+setup_swap_size_mb: 2048
+setup_swap_file: /swapfile

@@ -1,0 +1,96 @@
+---
+# Sync the PostgreSQL compose tree into postgresql_deploy_dir.
+# Uses setup_source_dir on the target when set; otherwise clones the git repo cache.
+
+- name: Ensure PostgreSQL deploy directory exists
+  ansible.builtin.file:
+    path: "{{ postgresql_deploy_dir }}"
+    state: directory
+
+- name: Deploy PostgreSQL from setup_source_dir on target
+  when: postgresql_setup_source_dir | length > 0
+  block:
+    - name: Verify setup_source_dir contains docker-compose.yml
+      ansible.builtin.stat:
+        path: "{{ postgresql_setup_source_dir }}/docker-compose.yml"
+      register: postgresql_source_compose
+
+    - name: Fail when setup_source_dir is invalid
+      ansible.builtin.fail:
+        msg: "postgresql_setup_source_dir must contain docker-compose.yml: {{ postgresql_setup_source_dir }}"
+      when: not postgresql_source_compose.stat.exists
+
+    - name: Dry-run rsync to detect PostgreSQL tree changes
+      ansible.builtin.shell: |
+        set -euo pipefail
+        rsync -a --delete \
+          --exclude '.env' --exclude '.repo-cache' \
+          --dry-run --itemize-changes \
+          "{{ postgresql_setup_source_dir }}/" "{{ postgresql_deploy_dir }}/" \
+          | grep -vE '^(\.d\.\.t|>f\.\.t)' \
+          | grep -c . || true
+      args:
+        executable: /bin/bash
+      register: postgresql_rsync_dry
+      changed_when: false
+
+    - name: Sync PostgreSQL compose tree from setup_source_dir
+      ansible.builtin.command: >
+        rsync -a --delete
+        --exclude .env --exclude .repo-cache
+        {{ postgresql_setup_source_dir }}/ {{ postgresql_deploy_dir }}/
+      register: postgresql_rsync_sync
+      changed_when: (postgresql_rsync_dry.stdout | trim | int) > 0
+
+- name: Deploy PostgreSQL from git repository cache
+  when: postgresql_setup_source_dir | length == 0
+  block:
+    - name: Ensure repo cache parent directory exists
+      ansible.builtin.file:
+        path: "{{ postgresql_repo_cache_dir | dirname }}"
+        state: directory
+
+    - name: Clone or update PostgreSQL repo cache
+      ansible.builtin.git:
+        repo: "{{ postgresql_repo_url }}"
+        dest: "{{ postgresql_repo_cache_dir }}"
+        version: "{{ postgresql_git_ref }}"
+        depth: 1
+        force: true
+      register: postgresql_git
+
+    - name: Verify repo subpath exists
+      ansible.builtin.stat:
+        path: "{{ postgresql_repo_cache_dir }}/{{ postgresql_repo_subpath }}/docker-compose.yml"
+      register: postgresql_repo_compose
+
+    - name: Fail when repo subpath is missing
+      ansible.builtin.fail:
+        msg: "Missing {{ postgresql_repo_subpath }} in cloned repository"
+      when: not postgresql_repo_compose.stat.exists
+
+    - name: Dry-run rsync from repo cache to deploy dir
+      ansible.builtin.shell: |
+        set -euo pipefail
+        rsync -a --delete \
+          --exclude '.env' --exclude '.repo-cache' \
+          --dry-run --itemize-changes \
+          "{{ postgresql_repo_cache_dir }}/{{ postgresql_repo_subpath }}/" "{{ postgresql_deploy_dir }}/" \
+          | grep -vE '^(\.d\.\.t|>f\.\.t)' \
+          | grep -c . || true
+      args:
+        executable: /bin/bash
+      register: postgresql_rsync_dry
+      changed_when: false
+
+    - name: Sync PostgreSQL compose tree from repo cache
+      ansible.builtin.command: >
+        rsync -a --delete
+        --exclude .env --exclude .repo-cache
+        {{ postgresql_repo_cache_dir }}/{{ postgresql_repo_subpath }}/ {{ postgresql_deploy_dir }}/
+      register: postgresql_rsync_sync
+      changed_when: (postgresql_rsync_dry.stdout | trim | int) > 0 or (postgresql_git is changed)
+
+- name: Record whether PostgreSQL deploy tree changed
+  ansible.builtin.set_fact:
+    postgresql_deploy_changed: "{{ (postgresql_rsync_sync is defined and postgresql_rsync_sync is changed) or (postgresql_git is defined and postgresql_git is changed) }}"

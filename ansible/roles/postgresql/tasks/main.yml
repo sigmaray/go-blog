@@ -1,0 +1,12 @@
+---
+# Deploy shared PostgreSQL compose stack onto the VPS.
+# Equivalent to docs/example-postgresql-docker-compose/scripts/setup-vps.sh.
+
+- name: Deploy PostgreSQL project tree
+  ansible.builtin.include_tasks: deploy.yml
+
+- name: Ensure PostgreSQL deploy .env exists
+  ansible.builtin.include_tasks: env.yml
+
+- name: Start PostgreSQL compose stack and wait for readiness
+  ansible.builtin.include_tasks: compose.yml

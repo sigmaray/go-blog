@@ -1,0 +1,25 @@
+---
+# Defaults for shared PostgreSQL VPS deploy (docs/example-postgresql-docker-compose).
+# Variable names mirror environment variables from scripts/setup-vps.sh in that tree.
+
+postgresql_deploy_dir: "{{ ansible_env.HOME | default('/root') }}/r/d/postgresql"
+postgresql_repo_url: "{{ repo_url }}"
+postgresql_git_ref: "{{ git_ref }}"
+postgresql_repo_subpath: docs/example-postgresql-docker-compose
+postgresql_repo_cache_dir: "{{ postgresql_deploy_dir }}/.repo-cache"
+
+# When set on the target host, copy this tree instead of cloning (CI / local test).
+postgresql_setup_source_dir: ""
+
+postgresql_user: postgres
+postgresql_password: ""
+postgresql_port: "5432"
+postgresql_ready_timeout_sec: 120
+
+# Rebuild even when deploy tree and health checks are current.
+setup_force: false
+
+# Rsync excludes matching the bash setup script.
+postgresql_rsync_excludes:
+  - .env
+  - .repo-cache

@@ -1,0 +1,17 @@
+---
+# Install packages, etckeeper, Docker, and optional swap on Ubuntu VPS hosts.
+# Shared by postgresql and go_blog playbooks so bootstrap stays consistent.
+
+- name: Configure swap when requested
+  ansible.builtin.include_tasks: swap.yml
+  when: setup_swap | bool
+
+- name: Install prerequisite packages
+  ansible.builtin.include_tasks: packages.yml
+
+- name: Install etckeeper
+  ansible.builtin.include_tasks: etckeeper.yml
+  when: not (setup_skip_apt | bool)
+
+- name: Install Docker Engine and Compose plugin
+  ansible.builtin.include_tasks: docker.yml

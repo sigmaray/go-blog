@@ -1,0 +1,112 @@
+---
+# Sync the go-blog project tree into go_blog_deploy_dir.
+# Uses setup_source_dir on the target when set; otherwise clones the git repo cache.
+
+- name: Ensure go-blog deploy directory exists
+  ansible.builtin.file:
+    path: "{{ go_blog_deploy_dir }}"
+    state: directory
+
+- name: Deploy go-blog from setup_source_dir on target
+  when: go_blog_setup_source_dir | length > 0
+  block:
+    - name: Verify setup_source_dir contains docker-compose.yml and Dockerfile
+      ansible.builtin.stat:
+        path: "{{ go_blog_setup_source_dir }}/{{ item }}"
+      loop:
+        - docker-compose.yml
+        - Dockerfile
+      register: go_blog_source_files
+
+    - name: Fail when setup_source_dir is invalid
+      ansible.builtin.fail:
+        msg: "go_blog_setup_source_dir must contain docker-compose.yml and Dockerfile: {{ go_blog_setup_source_dir }}"
+      when: go_blog_source_files.results | selectattr('stat.exists') | list | length < 2
+
+    - name: Dry-run rsync to detect go-blog tree changes
+      ansible.builtin.shell: |
+        set -euo pipefail
+        rsync -a --delete \
+          --exclude '.env' --exclude '.repo-cache' --exclude '.git' \
+          --exclude 'node_modules' --exclude 'test-results' --exclude 'playwright-report' \
+          --dry-run --itemize-changes \
+          "{{ go_blog_setup_source_dir }}/" "{{ go_blog_deploy_dir }}/" \
+          | grep -vE '^(\.d\.\.t|>f\.\.t)' \
+          | grep -c . || true
+      args:
+        executable: /bin/bash
+      register: go_blog_rsync_dry
+      changed_when: false
+
+    - name: Sync go-blog tree from setup_source_dir
+      ansible.builtin.command: >
+        rsync -a --delete
+        --exclude .env --exclude .repo-cache --exclude .git
+        --exclude node_modules --exclude test-results --exclude playwright-report
+        {{ go_blog_setup_source_dir }}/ {{ go_blog_deploy_dir }}/
+      register: go_blog_rsync_sync
+      changed_when: (go_blog_rsync_dry.stdout | trim | int) > 0
+
+- name: Deploy go-blog from git repository cache
+  when: go_blog_setup_source_dir | length == 0
+  block:
+    - name: Ensure repo cache parent directory exists
+      ansible.builtin.file:
+        path: "{{ go_blog_repo_cache_dir | dirname }}"
+        state: directory
+
+    - name: Clone or update go-blog repo cache
+      ansible.builtin.git:
+        repo: "{{ go_blog_repo_url }}"
+        dest: "{{ go_blog_repo_cache_dir }}"
+        version: "{{ go_blog_git_ref }}"
+        depth: 1
+        force: true
+      register: go_blog_git
+
+    - name: Resolve go-blog source directory inside repo cache
+      ansible.builtin.set_fact:
+        go_blog_repo_source_dir: >-
+          {{
+            (go_blog_repo_cache_dir ~ '/' ~ go_blog_repo_subpath)
+            if (go_blog_repo_subpath | length > 0)
+            else go_blog_repo_cache_dir
+          }}
+
+    - name: Verify repo source contains docker-compose.yml
+      ansible.builtin.stat:
+        path: "{{ go_blog_repo_source_dir }}/docker-compose.yml"
+      register: go_blog_repo_compose
+
+    - name: Fail when repo source is missing docker-compose.yml
+      ansible.builtin.fail:
+        msg: "Missing docker-compose.yml in {{ go_blog_repo_source_dir }}"
+      when: not go_blog_repo_compose.stat.exists
+
+    - name: Dry-run rsync from repo cache to deploy dir
+      ansible.builtin.shell: |
+        set -euo pipefail
+        rsync -a --delete \
+          --exclude '.env' --exclude '.repo-cache' --exclude '.git' \
+          --exclude 'node_modules' --exclude 'test-results' --exclude 'playwright-report' \
+          --dry-run --itemize-changes \
+          "{{ go_blog_repo_source_dir }}/" "{{ go_blog_deploy_dir }}/" \
+          | grep -vE '^(\.d\.\.t|>f\.\.t)' \
+          | grep -c . || true
+      args:
+        executable: /bin/bash
+      register: go_blog_rsync_dry
+      changed_when: false
+
+    - name: Sync go-blog tree from repo cache
+      ansible.builtin.command: >
+        rsync -a --delete
+        --exclude .env --exclude .repo-cache --exclude .git
+        --exclude node_modules --exclude test-results --exclude playwright-report
+        {{ go_blog_repo_source_dir }}/ {{ go_blog_deploy_dir }}/
+      register: go_blog_rsync_sync
+      changed_when: (go_blog_rsync_dry.stdout | trim | int) > 0 or (go_blog_git is changed)
+
+- name: Record whether go-blog deploy tree changed
+  ansible.builtin.set_fact:
+    go_blog_deploy_changed: "{{ (go_blog_rsync_sync is defined and go_blog_rsync_sync is changed) or (go_blog_git is defined and go_blog_git is changed) }}"

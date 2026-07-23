@@ -85,6 +85,17 @@ sudo bash scripts/setup-vps.sh --swap
 
 The app script writes `.env` (reuses `POSTGRES_PASSWORD` from `~/r/d/postgresql/.env` when unset), builds the image, waits for `/health`, and runs migrations. Override paths and secrets with environment variables (see script header).
 
+### VPS bootstrap with Ansible
+
+Declarative alternative to the bash scripts (same end state: shared Postgres on `infra`, then go-blog). See [`ansible/README.md`](ansible/README.md).
+
+```bash
+cd ansible
+cp inventory/example.ini inventory/production.ini
+# edit host/user in production.ini
+ansible-playbook -i inventory/production.ini playbooks/setup-all.yml
+```
+
 ### Manual deploy
 
 Create the network once if it does not exist (the shared Postgres compose also creates it):

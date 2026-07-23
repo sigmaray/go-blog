@@ -1,0 +1,41 @@
+---
+# Ensure Docker Engine and the Compose plugin are available.
+# Uses get.docker.com when missing; skips install when setup_skip_docker_install is true.
+
+- name: Check whether docker is installed
+  ansible.builtin.shell: command -v docker
+  args:
+    executable: /bin/bash
+  register: docker_bin
+  changed_when: false
+  failed_when: false
+
+- name: Check whether docker compose plugin works
+  ansible.builtin.command: docker compose version
+  register: docker_compose_plugin
+  changed_when: false
+  failed_when: false
+
+- name: Fail when Docker is missing and install was skipped
+  ansible.builtin.fail:
+    msg: docker not found and setup_skip_docker_install is true
+  when:
+    - setup_skip_docker_install | bool
+    - docker_bin.rc != 0 or docker_compose_plugin.rc != 0
+
+- name: Install Docker via get.docker.com
+  ansible.builtin.shell: curl -fsSL https://get.docker.com | sh
+  args:
+    executable: /bin/bash
+  when:
+    - not (setup_skip_docker_install | bool)
+    - docker_bin.rc != 0 or docker_compose_plugin.rc != 0
+
+- name: Enable and start Docker service
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+  when:
+    - not (setup_skip_docker_install | bool)
+    - docker_bin.rc != 0 or docker_compose_plugin.rc != 0

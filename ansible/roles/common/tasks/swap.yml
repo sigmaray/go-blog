@@ -1,0 +1,52 @@
+---
+# Create and enable a swap file when the host has no swap configured.
+# Mirrors --swap / SETUP_SWAP behavior from setup-vps.sh.
+
+- name: Read SwapTotal from /proc/meminfo
+  ansible.builtin.command: awk '/^SwapTotal:/ {print $2}' /proc/meminfo
+  register: swap_total_kb
+  changed_when: false
+
+- name: Show existing swap when already configured
+  ansible.builtin.command: swapon --show
+  changed_when: false
+  failed_when: false
+  when: (swap_total_kb.stdout | trim | int) > 0
+
+- name: Create swap file with fallocate when missing
+  ansible.builtin.command: fallocate -l {{ setup_swap_size_mb }}M {{ setup_swap_file }}
+  args:
+    creates: "{{ setup_swap_file }}"
+  register: swap_fallocate
+  failed_when: false
+  when: (swap_total_kb.stdout | trim | int) == 0
+
+- name: Create swap file with dd when fallocate failed
+  ansible.builtin.command: >
+    dd if=/dev/zero of={{ setup_swap_file }} bs=1M count={{ setup_swap_size_mb }} status=none
+  args:
+    creates: "{{ setup_swap_file }}"
+  when:
+    - (swap_total_kb.stdout | trim | int) == 0
+    - swap_fallocate is failed or swap_fallocate.rc | default(0) != 0
+
+- name: Restrict swap file permissions
+  ansible.builtin.file:
+    path: "{{ setup_swap_file }}"
+    mode: "0600"
+  when: (swap_total_kb.stdout | trim | int) == 0
+
+- name: Format swap file
+  ansible.builtin.command: mkswap {{ setup_swap_file }}
+  when: (swap_total_kb.stdout | trim | int) == 0
+
+- name: Enable swap file
+  ansible.builtin.command: swapon {{ setup_swap_file }}
+  when: (swap_total_kb.stdout | trim | int) == 0
+
+- name: Persist swap file in /etc/fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "{{ setup_swap_file }} none swap sw 0 0"
+    state: present
+  when: (swap_total_kb.stdout | trim | int) == 0

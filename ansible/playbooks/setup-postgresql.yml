@@ -1,0 +1,12 @@
+---
+# Bootstrap Ubuntu and deploy shared PostgreSQL (docs/example-postgresql-docker-compose).
+# Usage:
+#   ansible-playbook playbooks/setup-postgresql.yml
+#   ansible-playbook -i inventory/example.ini playbooks/setup-postgresql.yml
+
+- name: Setup shared PostgreSQL on VPS
+  hosts: vps
+  become: true
+  roles:
+    - role: common
+    - role: postgresql

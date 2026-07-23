@@ -1,0 +1,12 @@
+---
+# Bootstrap Ubuntu and deploy go-blog (requires shared PostgreSQL on network infra).
+# Usage:
+#   ansible-playbook playbooks/setup-go-blog.yml
+#   ansible-playbook -i inventory/example.ini playbooks/setup-go-blog.yml
+
+- name: Setup go-blog on VPS
+  hosts: vps
+  become: true
+  roles:
+    - role: common
+    - role: go_blog

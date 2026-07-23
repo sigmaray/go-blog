@@ -1,0 +1,27 @@
+---
+# Install git, curl, ca-certificates, openssl, and rsync used by deploy tasks.
+# Skips apt when setup_skip_apt is true (CI), but still verifies required binaries.
+
+- name: Verify required binaries when apt is skipped
+  ansible.builtin.shell: command -v {{ item }}
+  args:
+    executable: /bin/bash
+  loop:
+    - git
+    - curl
+    - rsync
+    - openssl
+  changed_when: false
+  when: setup_skip_apt | bool
+
+- name: Install bootstrap packages with apt
+  ansible.builtin.apt:
+    name:
+      - git
+      - curl
+      - ca-certificates
+      - openssl
+      - rsync
+    state: present
+    update_cache: true
+  when: not (setup_skip_apt | bool)

@@ -1,0 +1,160 @@
+name: VPS setup Ansible
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-ansible-postgresql:
+    name: Test PostgreSQL Ansible playbook
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible
+        run: pip install "ansible-core>=2.16,<2.19"
+
+      - name: Run PostgreSQL playbook (CI mode)
+        working-directory: ansible
+        run: |
+          ansible-playbook playbooks/setup-postgresql.yml \
+            -e postgresql_deploy_dir=/tmp/postgresql-deploy \
+            -e setup_skip_apt=true \
+            -e setup_skip_docker_install=true \
+            -e postgresql_setup_source_dir="${{ github.workspace }}/docs/example-postgresql-docker-compose" \
+            -e postgresql_password=ci-test-postgres-password \
+            -e postgresql_ready_timeout_sec=120
+
+      - name: Verify PostgreSQL is ready
+        working-directory: /tmp/postgresql-deploy
+        run: |
+          docker compose ps --status running | grep -q postgres
+          docker compose exec -T postgres pg_isready -U postgres -d postgres
+
+      - name: Verify goblog database was created
+        working-directory: /tmp/postgresql-deploy
+        env:
+          PGPASSWORD: ci-test-postgres-password
+        run: |
+          docker compose exec -T postgres psql -U postgres -d postgres -tAc \
+            "SELECT 1 FROM pg_database WHERE datname = 'goblog'" | grep -q 1
+
+      - name: Verify deploy env file
+        run: |
+          test -f /tmp/postgresql-deploy/.env
+          grep -q '^POSTGRES_PASSWORD=ci-test-postgres-password' /tmp/postgresql-deploy/.env
+          grep -q '^POSTGRES_USER=postgres' /tmp/postgresql-deploy/.env
+          grep -q '^POSTGRES_PORT=5432' /tmp/postgresql-deploy/.env
+
+      - name: Run PostgreSQL playbook again (idempotency)
+        working-directory: ansible
+        run: |
+          ansible-playbook playbooks/setup-postgresql.yml \
+            -e postgresql_deploy_dir=/tmp/postgresql-deploy \
+            -e setup_skip_apt=true \
+            -e setup_skip_docker_install=true \
+            -e postgresql_setup_source_dir="${{ github.workspace }}/docs/example-postgresql-docker-compose" \
+            -e postgresql_password=ci-test-postgres-password \
+            -e postgresql_ready_timeout_sec=120 \
+            2>&1 | tee /tmp/pg-ansible-run2.log
+          grep -q 'skipping redeploy' /tmp/pg-ansible-run2.log
+
+      - name: Verify POSTGRES_PASSWORD persisted across runs
+        run: grep -q '^POSTGRES_PASSWORD=ci-test-postgres-password' /tmp/postgresql-deploy/.env
+
+      - name: Show container status on failure
+        if: failure()
+        working-directory: /tmp/postgresql-deploy
+        run: docker compose ps && docker compose logs --tail=100 postgres
+
+  test-ansible-go-blog:
+    name: Test go-blog Ansible playbook
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible
+        run: pip install "ansible-core>=2.16,<2.19"
+
+      - name: Run PostgreSQL playbook (dependency)
+        working-directory: ansible
+        run: |
+          ansible-playbook playbooks/setup-postgresql.yml \
+            -e postgresql_deploy_dir=/tmp/postgresql-deploy \
+            -e setup_skip_apt=true \
+            -e setup_skip_docker_install=true \
+            -e postgresql_setup_source_dir="${{ github.workspace }}/docs/example-postgresql-docker-compose" \
+            -e postgresql_password=ci-test-postgres-password \
+            -e postgresql_ready_timeout_sec=120
+
+      - name: Run go-blog playbook (CI mode)
+        working-directory: ansible
+        run: |
+          ansible-playbook playbooks/setup-go-blog.yml \
+            -e go_blog_deploy_dir=/tmp/go-blog-deploy \
+            -e go_blog_postgres_env_file=/tmp/postgresql-deploy/.env \
+            -e setup_skip_apt=true \
+            -e setup_skip_docker_install=true \
+            -e go_blog_setup_source_dir="${{ github.workspace }}" \
+            -e go_blog_ready_timeout_sec=180
+
+      - name: Verify go-blog is healthy
+        run: |
+          curl -fsS http://127.0.0.1:8083/health | grep -q '"status":"ok"'
+          cd /tmp/go-blog-deploy
+          docker compose ps --status running | grep -q go-blog
+
+      - name: Verify deploy env file
+        run: |
+          test -f /tmp/go-blog-deploy/.env
+          grep -q '^GO_BLOG_DATABASE_PASSWORD=ci-test-postgres-password' /tmp/go-blog-deploy/.env
+          grep -q '^GO_BLOG_DATABASE_HOST=postgresql' /tmp/go-blog-deploy/.env
+          grep -q '^GO_BLOG_HTTP_PORT=8083' /tmp/go-blog-deploy/.env
+          grep -qE '^GO_BLOG_SESSION_SECRET=.+' /tmp/go-blog-deploy/.env
+          secret="$(grep -E '^GO_BLOG_SESSION_SECRET=' /tmp/go-blog-deploy/.env | cut -d= -f2-)"
+          test "${#secret}" -ge 32
+
+      - name: Run go-blog playbook again (idempotency)
+        working-directory: ansible
+        run: |
+          ansible-playbook playbooks/setup-go-blog.yml \
+            -e go_blog_deploy_dir=/tmp/go-blog-deploy \
+            -e go_blog_postgres_env_file=/tmp/postgresql-deploy/.env \
+            -e setup_skip_apt=true \
+            -e setup_skip_docker_install=true \
+            -e go_blog_setup_source_dir="${{ github.workspace }}" \
+            -e go_blog_ready_timeout_sec=180 \
+            2>&1 | tee /tmp/go-blog-ansible-run2.log
+          grep -q 'skipping redeploy' /tmp/go-blog-ansible-run2.log
+
+      - name: Verify session secret persisted across runs
+        run: |
+          secret1="$(grep -E '^GO_BLOG_SESSION_SECRET=' /tmp/go-blog-deploy/.env | cut -d= -f2-)"
+          test -n "${secret1}"
+          test "${#secret1}" -ge 32
+
+      - name: Show container status on failure
+        if: failure()
+        run: |
+          docker compose -f /tmp/postgresql-deploy/docker-compose.yml ps || true
+          docker compose -f /tmp/postgresql-deploy/docker-compose.yml logs --tail=50 postgres || true
+          docker compose -f /tmp/go-blog-deploy/docker-compose.yml ps || true
+          docker compose -f /tmp/go-blog-deploy/docker-compose.yml logs --tail=100 go-blog || true
